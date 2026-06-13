@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Julia ML Competitor — An Open Course</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+<style>
+  :root{
+    --bg:#f7f4ee; --pane:#fffdf9; --side:#f0ece2; --ink:#23262e; --soft:#5a6172;
+    --line:#ddd7ca; --accent:#3559b3; --accent2:#7c8cff;
+    --julia1:#cb3c33; --julia2:#389826; --julia3:#9558b2;
+    --green:#2c7a3f; --red:#c0392b; --amber:#b7791f; --codebg:#1b1e27; --codeink:#dfe3ee;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --serif:'Charter','Georgia','Cambria','Times New Roman',serif;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  body.dark{
+    --bg:#0f1117; --pane:#13161e; --side:#0c0e14; --ink:#e6e8ee; --soft:#9aa3b2;
+    --line:#272b36; --accent:#7c8cff; --accent2:#7c8cff;
+    --green:#3fb950; --red:#f0584b; --amber:#e3b341; --codebg:#1b1e27; --codeink:#dfe3ee;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+            font-family:var(--serif);font-size:18px;line-height:1.62}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---------- layout ---------- */
+  .shell{display:grid;grid-template-columns:320px 1fr;height:100%}
+  aside{background:var(--side);border-right:1px solid var(--line);overflow-y:auto;padding:0}
+  main{overflow-y:auto;position:relative}
+
+  /* ---------- sidebar ---------- */
+  .brand{padding:20px 22px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;
+         background:var(--side);z-index:5}
+  .brand .dots{display:flex;gap:6px;margin-bottom:12px}
+  .brand .dots span{width:11px;height:11px;border-radius:50%}
+  .d1{background:var(--julia1)}.d2{background:var(--julia3)}.d3{background:var(--julia2)}
+  .brand h1{font-family:var(--mono);font-size:15px;letter-spacing:.02em;margin:0;line-height:1.35}
+  .brand .by{font-size:13px;color:var(--soft);margin-top:3px}
+  nav.toc{padding:10px 8px 60px}
+  .chap{margin:2px 0}
+  .chap>button{width:100%;text-align:left;background:none;border:none;cursor:pointer;
+        font-family:var(--mono);font-size:12.5px;letter-spacing:.02em;color:var(--ink);
+        padding:8px 12px;border-radius:7px;display:flex;align-items:center;gap:8px}
+  .chap>button:hover{background:rgba(124,140,255,.10)}
+  .chap>button .tw{color:var(--soft);font-size:10px;transition:transform .15s;display:inline-block;width:10px}
+  .chap.open>button .tw{transform:rotate(90deg)}
+  .chap>button .lbl{flex:1}
+  .chap>button .badge{font-size:9px;color:var(--soft);border:1px solid var(--line);
+        border-radius:10px;padding:1px 7px;letter-spacing:.04em}
+  .chap.open .seclist{display:block}
+  .seclist{display:none;list-style:none;margin:2px 0 8px;padding:0 0 0 6px}
+  .seclist a{display:block;font-family:var(--sans);font-size:13.5px;color:var(--soft);
+        padding:5px 12px 5px 26px;border-left:2px solid transparent;border-radius:0 6px 6px 0}
+  .seclist a:hover{color:var(--ink);background:rgba(124,140,255,.08);text-decoration:none}
+  .seclist a.cur{color:var(--accent);border-left-color:var(--accent);
+        background:rgba(53,89,179,.08);font-weight:600}
+  body.dark .seclist a.cur{background:rgba(124,140,255,.12)}
+
+  /* ---------- top toolbar ---------- */
+  .toolbar{position:sticky;top:0;z-index:8;display:flex;align-items:center;justify-content:space-between;
+           gap:10px;padding:10px 26px;background:var(--pane);border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:12px;color:var(--soft);letter-spacing:.03em;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .crumbs b{color:var(--ink)}
+  .tbtns{display:flex;gap:8px;align-items:center}
+  .nbtn{font-family:var(--mono);font-size:12.5px;cursor:pointer;border:1px solid var(--line);
+        background:var(--bg);color:var(--ink);padding:7px 13px;border-radius:8px;transition:.15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .nbtn:disabled{opacity:.35;cursor:not-allowed}
+  .nbtn.icon{padding:7px 11px}
+
+  /* ---------- content ---------- */
+  .reading{max-width:760px;margin:0 auto;padding:40px 34px 120px}
+  .page{display:none;animation:fade .35s ease}
+  .page.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .kick{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+        color:var(--soft)}
+  .page h2{font-family:var(--sans);font-weight:800;font-size:33px;line-height:1.15;
+           margin:.15em 0 .5em;letter-spacing:-.015em}
+  .page h3{font-family:var(--sans);font-weight:700;font-size:20px;margin:30px 0 6px}
+  .page p{margin:.75em 0}
+  .lead{font-size:19.5px;color:var(--soft)}
+  code.inl{font-family:var(--mono);font-size:.84em;background:rgba(124,140,255,.10);
+           border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:inherit}
+  body.dark code.inl{background:var(--codebg)}
+
+  pre{background:var(--codebg);border:1px solid var(--line);border-radius:10px;overflow:auto;
+      margin:16px 0;font-size:13.5px}
+  .codehdr{display:flex;align-items:center;gap:7px;padding:9px 14px;background:#13161e;
+           border-bottom:1px solid #272b36;border-radius:10px 10px 0 0}
+  .codehdr .dot{width:11px;height:11px;border-radius:50%}
+  .codehdr .label{margin-left:8px;font-family:var(--mono);font-size:11px;color:#9aa3b2}
+  pre code{display:block;padding:14px 16px;font-family:var(--mono);line-height:1.55;color:var(--codeink)}
+  .k{color:#c792ea}.f{color:#82aaff}.s{color:#c3e88d}.c{color:#7c828f;font-style:italic}
+  .n{color:#f78c6c}.t{color:#ffcb6b}
+
+  /* PreTeXt-style blocks */
+  .block{border:1px solid var(--line);border-left-width:4px;border-radius:8px;
+         padding:12px 18px;margin:18px 0;background:var(--pane)}
+  .block .bh{font-family:var(--sans);font-weight:700;font-size:14px;margin-bottom:2px}
+  .block.def{border-left-color:var(--accent)} .block.def .bh{color:var(--accent)}
+  .block.ex{border-left-color:var(--julia2)} .block.ex .bh{color:var(--green)}
+  .block.note{border-left-color:var(--amber)} .block.note .bh{color:var(--amber)}
+  .block.rq{border-left-color:var(--julia3);background:rgba(149,88,178,.06)}
+  .block.rq .bh{color:var(--julia3)}
+  .block.rq ol{margin:.4em 0 0;padding-left:20px} .block.rq li{margin:.35em 0}
+  .block.ch{border-left-color:var(--julia1);background:rgba(203,60,51,.05)} .block.ch .bh{color:var(--julia1)}
+  .euler{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+  .euler input{font-family:var(--mono);font-size:14px;padding:8px 12px;border-radius:8px;
+        border:1px solid var(--line);background:var(--pane);color:var(--ink);width:180px}
+  .euler input:focus{outline:none;border-color:var(--accent)}
+  .euler input:disabled{opacity:.7}
+  .euler button{font-family:var(--mono);font-size:13px;cursor:pointer;border:1px solid var(--accent);
+        background:var(--accent);color:#0f1117;padding:8px 16px;border-radius:8px;font-weight:600;transition:.15s}
+  body:not(.dark) .euler button{color:#fff}
+  .euler button:hover{filter:brightness(1.08)} .euler button:disabled{opacity:.5;cursor:default}
+  .euler .fb{font-family:var(--mono);font-size:13px;font-weight:600}
+  .euler .fb.ok{color:var(--green)} .euler .fb.no{color:var(--red)}
+  .euler .tries{font-family:var(--mono);font-size:11px;color:var(--soft)}
+  .reading .speaking{background:rgba(124,140,255,.16);border-radius:6px;
+        box-shadow:0 0 0 6px rgba(124,140,255,.10);transition:background .2s}
+  .qspeak{float:right;cursor:pointer;border:1px solid var(--line);background:var(--bg);
+        color:var(--soft);font-family:var(--mono);font-size:11px;line-height:1;
+        padding:3px 8px;border-radius:6px;margin:-2px 0 0 8px}
+  .qspeak:hover{border-color:var(--accent);color:var(--accent)}
+  #listenBtn.on{background:var(--accent);color:var(--pane);border-color:var(--accent)}
+  body.dark #listenBtn.on{color:#0f1117}
+
+  .contrast{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .card{border-radius:10px;padding:13px 16px;border:1px solid var(--line)}
+  .card.py{background:rgba(192,57,43,.07);border-color:rgba(192,57,43,.32)}
+  .card.jl{background:rgba(44,122,63,.08);border-color:rgba(44,122,63,.32)}
+  .card .tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+  .card.py .tag{color:var(--red)} .card.jl .tag{color:var(--green)}
+  .card p{margin:.35em 0 0;font-size:15px}
+  .card code{font-family:var(--mono);font-size:.85em}
+
+  .eq{background:var(--pane);border:1px solid var(--line);border-radius:10px;
+      padding:6px 16px;margin:16px 0;overflow-x:auto}
+  .fig{background:var(--pane);border:1px solid var(--line);border-radius:10px;
+       padding:14px 16px 8px;margin:18px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto;color:var(--ink)}
+  .figcap{font-size:13px;color:var(--soft);margin:8px 4px 4px;text-align:center;line-height:1.5}
+  .figcap code{font-family:var(--mono);font-size:.92em}
+  table.tt{border-collapse:collapse;width:100%;margin:16px 0;font-size:15px;font-family:var(--sans)}
+  table.tt th,table.tt td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+  table.tt th{background:var(--pane);font-family:var(--mono);font-size:12px;text-transform:uppercase;
+              letter-spacing:.05em;color:var(--soft)}
+  table.tt td code{font-family:var(--mono)}
+
+  .pager{display:flex;justify-content:space-between;gap:12px;margin-top:48px;
+         border-top:1px solid var(--line);padding-top:18px}
+  .pager a{font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;gap:2px;
+           cursor:pointer;max-width:46%}
+  .pager .lab{font-size:10px;color:var(--soft);letter-spacing:.1em;text-transform:uppercase}
+  .pager .r{text-align:right;align-items:flex-end}
+  .roadmap{list-style:none;padding:0;margin:14px 0}
+  .roadmap li{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;
+              background:var(--pane);font-family:var(--sans);font-size:15px}
+  .roadmap li b{font-family:var(--mono);color:var(--accent);font-size:13px;margin-right:8px}
+  .ftn{margin-top:40px;font-family:var(--mono);font-size:11.5px;color:var(--soft)}
+  .menutoggle{display:none}
+  @media(max-width:880px){
+    .shell{grid-template-columns:1fr}
+    aside{position:fixed;inset:0 40% 0 0;z-index:30;transform:translateX(-105%);transition:.25s;box-shadow:0 0 40px rgba(0,0,0,.3)}
+    body.navopen aside{transform:none}
+    .menutoggle{display:inline-flex}
+    .contrast{grid-template-columns:1fr}
+    .reading{padding:28px 18px 100px}
+  }
+</style>
+</head>
+<body class="dark">
+<div class="shell">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+      <h1>Julia ML Competitor</h1>
+      <div class="by">An Open Course · for Gabriel</div>
+    </div>
+    <nav class="toc" id="toc"><!-- built by JS --></nav>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <main id="main">
+    <div class="toolbar">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <button class="nbtn icon menutoggle" onclick="document.body.classList.toggle('navopen')">☰</button>
+        <div class="crumbs" id="crumbs">Front Matter</div>
+      </div>
+      <div class="tbtns">
+        <button class="nbtn" id="listenBtn" title="Read this section aloud">🔊 Listen</button>
+        <button class="nbtn icon" id="darkBtn" title="Toggle light / dark">◐</button>
+        <button class="nbtn" id="prevTop" onclick="rel(-1)">← Prev</button>
+        <button class="nbtn" id="upTop" onclick="goUp()">Up</button>
+        <button class="nbtn" id="nextTop" onclick="rel(1)">Next →</button>
+      </div>
+    </div>
+
+    <div class="reading">
+
+      <!-- ============ FRONT MATTER ============ -->
+      <section class="page active" id="front" data-crumb="Front Matter" data-chap="fm">
+        <div class="kick">Julia ML Competitor</div>
+        <h2>An Open Course in Idiomatic Julia &amp; Competitive ML</h2>
+        <p class="lead">A self-contained path to commanding Julia's modeling toolchain — with the linear algebra taught rigorously underneath, exactly where you'll use it.</p>
+        <p>You're a confident programmer, new to Julia's ML ecosystem and to linear algebra. This book teaches both from the ground up and ends in a real Kaggle competition. Read a section, run its code, answer the Reading Questions, then sit the module exam. You advance only when you pass (≥ 80%).</p>
+        <div class="block note"><div class="bh">The Lock</div>Every concept is taught here. Kaggle is used only to download the capstone dataset and upload submissions — no outside courses, videos, or notebooks. If you wonder "where do I learn X," the answer is: right here.</div>
+        <h3>How the book is built</h3>
+        <p>Ten modules across five tracks. Light linear algebra comes early (Module 2) to cement the array model; the heavy linear algebra lands late (Module 5), right before it becomes a fitted model you submit. Data and visualization come before models so motivation stays high. Use the sidebar to move between sections, or the <b>Prev / Next</b> buttons to read straight through.</p>
+        <div class="block ex"><div class="bh">Reading the blocks</div>Throughout, a <span style="color:var(--red)">red</span> card flags a common trap; the <span style="color:var(--green)">green</span> card gives the Julia idiom to reach for instead. Blue Definition boxes, amber Notes, and purple Reading-Question boxes structure each section.</div>
+        <p style="margin-top:14px">Start with <a onclick="show('m1-intro')">Module 1 · Idiomatic Julia</a>, where you currently are.</p>
+      </section>
+
+      <!-- ============ M1 INTRO ============ -->
+      <section class="page" id="m1-intro" data-crumb="1 · Idiomatic Julia" data-chap="m1">
+        <div class="kick">Module 1</div>
+        <h2>Idiomatic Julia</h2>
+        <p class="lead">Write Julia that is fast and generic because it is idiomatic — not another language with different punctuation.</p>
+        <p>This module installs the instincts the whole course rests on: the type system, multiple dispatch, the array model, broadcasting, views, and the single performance idea — type stability — that makes loops fast. Each section is short and has runnable code and Reading Questions. The chapter closes with a practice page that preps the Module 1 exam.</p>
+        <div class="block def"><div class="bh">Competency · Module 1</div>Write type-stable, idiomatic Julia; use dispatch, broadcasting, <code class="inl">!</code> and <code class="inl">@view</code> correctly; stand up a reproducible environment; and — the boss — vectorize a slow loop and beat a benchmark.</div>
+        <p>Sections: the REPL, types, dispatch, functions, arrays, broadcasting, mutation &amp; views, type stability, project hygiene, and practice.</p>
+      </section>
+
+      <!-- ============ 1.1 REPL ============ -->
+      <section class="page" id="m1-repl" data-crumb="1.1 · The REPL" data-chap="m1">
+        <div class="kick">Section 1.1</div>
+        <h2>The REPL has four modes</h2>
+        <p>The Julia REPL is modal. From a fresh <code class="inl">julia&gt;</code> prompt one keystroke switches context; Backspace returns you.</p>
+        <table class="tt">
+          <tr><th>Key</th><th>Mode</th><th>Use</th></tr>
+          <tr><td><code>]</code></td><td>Package (<code>pkg&gt;</code>)</td><td><code>add</code>, <code>status</code>, <code>activate</code></td></tr>
+          <tr><td><code>?</code></td><td>Help</td><td><code>?println</code> shows docs</td></tr>
+          <tr><td><code>;</code></td><td>Shell</td><td>run a shell command inline</td></tr>
+        </table>
+        <div class="block note"><div class="bh">String interpolation</div>No special prefix or format verb: any double-quoted string interpolates with <code class="inl">$</code> — <code class="inl">"Hi $name"</code> — and <code class="inl">$(...)</code> evaluates a full expression: <code class="inl">"$(2+2)"</code>.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>Which key enters package mode, and what command makes the current folder its own environment?</li>
+          <li>Write a string that interpolates the expression \(3^2+1\) inline.</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.2 TYPES ============ -->
+      <section class="page" id="m1-types" data-crumb="1.2 · Types" data-chap="m1">
+        <div class="kick">Section 1.2</div>
+        <h2>Types run the show</h2>
+        <p>Types form a tree. <strong>Abstract</strong> types are interior nodes — no fields, can't be instantiated; <strong>concrete</strong> types are the leaves that hold data. Read <code class="inl">&lt;:</code> as "is a subtype of":</p>
+        <div class="eq">\[ \texttt{Float64} \subset \texttt{AbstractFloat} \subset \texttt{Real} \subset \texttt{Number} \subset \texttt{Any} \]</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="f">typeof</span>(<span class="n">3.0</span>)              <span class="c"># Float64</span>
+<span class="t">Float64</span> <span class="k">&lt;:</span> <span class="t">Real</span>          <span class="c"># true</span>
+<span class="f">eltype</span>([<span class="n">1.0</span>, <span class="n">2.0</span>])       <span class="c"># Float64 — the array's element type</span></code></pre>
+        <div class="block def"><div class="bh">Definition · Type stability (preview)</div>The type lattice is real machinery: the compiler specializes code per concrete type. Types are how you get C-like speed <em>and</em> how you select behavior. We make this precise in Section 1.8.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>Is <code class="inl">Int64 &lt;: AbstractFloat</code>? Why or why not?</li>
+          <li>What does <code class="inl">eltype([1, 2, 3])</code> return, and what would <code class="inl">eltype([1, 2.0])</code> return?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.3 DISPATCH ============ -->
+      <section class="page" id="m1-dispatch" data-crumb="1.3 · Multiple Dispatch" data-chap="m1">
+        <div class="kick">Section 1.3</div>
+        <h2>Multiple dispatch — the defining feature</h2>
+        <p>In most languages a method belongs to a single type — its receiver — and dispatch happens on that one object: <code class="inl">circle.area()</code>. Julia frees the function from any owner: one function <em>name</em> holds many <strong>methods</strong>, and Julia picks by the types of <strong>all</strong> arguments, not just the first.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="k">struct</span> <span class="t">Circle</span>; r::<span class="t">Float64</span>; <span class="k">end</span>
+<span class="k">struct</span> <span class="t">Rect</span>;   w::<span class="t">Float64</span>; h::<span class="t">Float64</span>; <span class="k">end</span>
+
+<span class="f">area</span>(c::<span class="t">Circle</span>) = π * c.r^<span class="n">2</span>
+<span class="f">area</span>(r::<span class="t">Rect</span>)   = r.w * r.h
+
+<span class="f">area</span>(<span class="t">Circle</span>(<span class="n">2.0</span>))             <span class="c"># 12.566…</span></code></pre>
+        <div class="block def"><div class="bh">Definition · Method selection</div>A function \(f\) is a set of methods \(\{m_1,\dots,m_k\}\). A call \(f(x_1,\dots,x_n)\) selects the <em>most specific</em> method whose signature types are supertypes of \(\big(\texttt{typeof}(x_1),\dots,\texttt{typeof}(x_n)\big)\).</p></div>
+        <div class="block note"><div class="bh">Why it matters for ML</div>When you later call <code class="inl">fit!(machine, X, y)</code>, dispatch resolves — at compile time — to a method specialized for your exact model and data. No runtime lookup, no boxing. You write generic code; the compiler emits specialized code.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>Add a <code class="inl">Triangle</code> with a base and height. How many of the existing <code class="inl">area</code> methods must you change?</li>
+          <li>Why can single-dispatch OOP only "fake" a two-type operation like <code class="inl">collide(a, b)</code>?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.4 FUNCTIONS ============ -->
+      <section class="page" id="m1-functions" data-crumb="1.4 · Functions &amp; !" data-chap="m1">
+        <div class="kick">Section 1.4</div>
+        <h2>Functions &amp; the <code class="inl">!</code> convention</h2>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="f">square</span>(x) = x^<span class="n">2</span>            <span class="c"># short form — reads like math</span>
+inc = x <span class="k">-&gt;</span> x + <span class="n">1</span>            <span class="c"># anonymous function, stored as a value</span>
+
+v = [<span class="n">3</span>, <span class="n">1</span>, <span class="n">2</span>]
+<span class="f">sort</span>(v)    <span class="c"># returns a COPY — v untouched</span>
+<span class="f">sort!</span>(v)   <span class="c"># sorts IN PLACE — the ! means it mutates</span></code></pre>
+        <div class="block def"><div class="bh">Definition · The bang</div>A trailing <code class="inl">!</code> is a naming discipline meaning "this mutates its argument." Nothing enforces it, but it is universal: <code class="inl">push!</code>, <code class="inl">fit!</code>, <code class="inl">predict!</code> all write in place.</div>
+        <p>A short-form function returns its <em>last expression</em> automatically — no <code class="inl">return</code> needed. Multiple return values are tuples you can destructure: <code class="inl">lo, hi = extrema(v)</code>.</p>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>What does <code class="inl">sort(v)</code> do to <code class="inl">v</code>? What does <code class="inl">sort!(v)</code> do?</li>
+          <li>Rewrite <code class="inl">bounds(a) = (minimum(a), maximum(a))</code> and destructure its result.</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.5 ARRAYS ============ -->
+      <section class="page" id="m1-arrays" data-crumb="1.5 · Arrays" data-chap="m1">
+        <div class="kick">Section 1.5</div>
+        <h2>Arrays — built in, and column-major</h2>
+        <p>Arrays are first-class in Base (no import). Two facts surprise newcomers; both matter for speed.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>A = [<span class="n">1</span> <span class="n">2</span> <span class="n">3</span>; <span class="n">4</span> <span class="n">5</span> <span class="n">6</span>]    <span class="c"># 2×3 Matrix{Int}</span>
+A[<span class="n">1</span>, <span class="n">2</span>]              <span class="c"># 2 — ONE-based indexing</span>
+A[:, <span class="n">1</span>]              <span class="c"># [1, 4] — first column</span></code></pre>
+        <p>Julia is <strong>column-major</strong> — the opposite of the row-major layout C and Go use for arrays. Entry \(A_{i,j}\) lives at linear offset</p>
+        <div class="eq">\[ \text{offset}(i,j) = (i-1) + (j-1)\,m \]</div>
+        <div class="fig">
+          <svg viewBox="0 0 600 210" role="img" aria-label="A 2 by 3 matrix and its column-major linear memory layout" xmlns="http://www.w3.org/2000/svg" font-family="var(--mono)">
+            <!-- headings -->
+            <text x="30" y="24" font-size="13" font-weight="700" fill="currentColor" text-anchor="start">Matrix A (2×3)</text>
+            <text x="300" y="62" font-size="13" font-weight="700" fill="currentColor" text-anchor="start">Linear memory (column-major)</text>
+            <!-- column index labels -->
+            <text x="82"  y="48" font-size="11" fill="var(--soft)" text-anchor="middle">j=1</text>
+            <text x="126" y="48" font-size="11" fill="var(--soft)" text-anchor="middle">j=2</text>
+            <text x="170" y="48" font-size="11" fill="var(--soft)" text-anchor="middle">j=3</text>
+            <!-- row index labels -->
+            <text x="46" y="96"  font-size="11" fill="var(--soft)" text-anchor="middle">i=1</text>
+            <text x="46" y="140" font-size="11" fill="var(--soft)" text-anchor="middle">i=2</text>
+            <!-- matrix cells: col1 green, col2 blue, col3 purple -->
+            <rect x="60"  y="70"  width="44" height="44" rx="5" fill="var(--julia2)" fill-opacity="0.16" stroke="var(--julia2)" stroke-width="1.5"/>
+            <rect x="60"  y="114" width="44" height="44" rx="5" fill="var(--julia2)" fill-opacity="0.16" stroke="var(--julia2)" stroke-width="1.5"/>
+            <rect x="104" y="70"  width="44" height="44" rx="5" fill="var(--accent)" fill-opacity="0.16" stroke="var(--accent)" stroke-width="1.5"/>
+            <rect x="104" y="114" width="44" height="44" rx="5" fill="var(--accent)" fill-opacity="0.16" stroke="var(--accent)" stroke-width="1.5"/>
+            <rect x="148" y="70"  width="44" height="44" rx="5" fill="var(--julia3)" fill-opacity="0.16" stroke="var(--julia3)" stroke-width="1.5"/>
+            <rect x="148" y="114" width="44" height="44" rx="5" fill="var(--julia3)" fill-opacity="0.16" stroke="var(--julia3)" stroke-width="1.5"/>
+            <text x="82"  y="98"  font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">1</text>
+            <text x="82"  y="142" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">4</text>
+            <text x="126" y="98"  font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">2</text>
+            <text x="126" y="142" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">5</text>
+            <text x="170" y="98"  font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">3</text>
+            <text x="170" y="142" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">6</text>
+            <!-- arrow -->
+            <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker></defs>
+            <line x1="205" y1="114" x2="288" y2="114" stroke="currentColor" stroke-width="1.5" marker-end="url(#ah)"/>
+            <text x="246" y="106" font-size="11" fill="var(--soft)" text-anchor="middle">stored as</text>
+            <!-- memory strip: 1,4,2,5,3,6 -->
+            <rect x="300" y="92" width="44" height="44" rx="5" fill="var(--julia2)" fill-opacity="0.16" stroke="var(--julia2)" stroke-width="1.5"/>
+            <rect x="344" y="92" width="44" height="44" rx="5" fill="var(--julia2)" fill-opacity="0.16" stroke="var(--julia2)" stroke-width="1.5"/>
+            <rect x="388" y="92" width="44" height="44" rx="5" fill="var(--accent)" fill-opacity="0.16" stroke="var(--accent)" stroke-width="1.5"/>
+            <rect x="432" y="92" width="44" height="44" rx="5" fill="var(--accent)" fill-opacity="0.16" stroke="var(--accent)" stroke-width="1.5"/>
+            <rect x="476" y="92" width="44" height="44" rx="5" fill="var(--julia3)" fill-opacity="0.16" stroke="var(--julia3)" stroke-width="1.5"/>
+            <rect x="520" y="92" width="44" height="44" rx="5" fill="var(--julia3)" fill-opacity="0.16" stroke="var(--julia3)" stroke-width="1.5"/>
+            <text x="322" y="120" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">1</text>
+            <text x="366" y="120" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">4</text>
+            <text x="410" y="120" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">2</text>
+            <text x="454" y="120" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">5</text>
+            <text x="498" y="120" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">3</text>
+            <text x="542" y="120" font-size="16" font-weight="700" fill="currentColor" text-anchor="middle">6</text>
+            <!-- offsets -->
+            <text x="322" y="152" font-size="11" fill="var(--soft)" text-anchor="middle">0</text>
+            <text x="366" y="152" font-size="11" fill="var(--soft)" text-anchor="middle">1</text>
+            <text x="410" y="152" font-size="11" fill="var(--soft)" text-anchor="middle">2</text>
+            <text x="454" y="152" font-size="11" fill="var(--soft)" text-anchor="middle">3</text>
+            <text x="498" y="152" font-size="11" fill="var(--soft)" text-anchor="middle">4</text>
+            <text x="542" y="152" font-size="11" fill="var(--soft)" text-anchor="middle">5</text>
+            <!-- column group labels -->
+            <text x="344" y="182" font-size="11" fill="var(--julia2)" text-anchor="middle" font-weight="700">column 1</text>
+            <text x="432" y="182" font-size="11" fill="var(--accent)" text-anchor="middle" font-weight="700">column 2</text>
+            <text x="520" y="182" font-size="11" fill="var(--julia3)" text-anchor="middle" font-weight="700">column 3</text>
+          </svg>
+          <div class="figcap">Each column lands in one contiguous run. With \(m=2\), entry \(A_{2,2}=5\) sits at offset \((2-1)+(2-1)\cdot 2 = 3\) — the 4th slot. Walking a column steps by 1 in memory; walking a row jumps by \(m\).</div>
+        </div>
+        <div class="contrast">
+          <div class="card py"><div class="tag">Row-major (C / Go)</div><p>Iterating a <em>row</em> walks contiguous memory — the cache-friendly direction.</p></div>
+          <div class="card jl"><div class="tag">Column-major (Julia)</div><p>Iterating a <em>column</em> is cache-friendly. Loop columns outer, rows inner — backwards and a hot loop runs several times slower.</p></div>
+        </div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>For a hot double loop over a matrix, which index belongs in the inner loop in Julia, and why?</li>
+          <li>What does <code class="inl">[i^2 for i in 1:5]</code> evaluate to?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.6 BROADCASTING ============ -->
+      <section class="page" id="m1-broadcast" data-crumb="1.6 · Broadcasting" data-chap="m1">
+        <div class="kick">Section 1.6</div>
+        <h2>Broadcasting — the dot, and loop fusion</h2>
+        <p>The <code class="inl">.</code> suffix applies any function elementwise: <code class="inl">f.(x)</code> computes \(\big(f(x_1),\dots,f(x_n)\big)\). The deep feature is <strong>fusion</strong> — a chain of dotted operations compiles into a single loop with no temporaries.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>x = [<span class="n">1.0</span>, <span class="n">2.0</span>, <span class="n">3.0</span>]
+x .^ <span class="n">2</span> .+ <span class="n">1</span>            <span class="c"># [2.0, 5.0, 10.0] — ONE fused pass</span>
+
+y = <span class="f">similar</span>(x)
+<span class="k">@.</span> y = x^<span class="n">2</span> + <span class="n">1</span>          <span class="c"># @. dots EVERY operator; writes in place</span></code></pre>
+        <div class="contrast">
+          <div class="card py"><div class="tag">Unfused</div><p>Computing <code>x.^2</code> then <code>.+ 1</code> as separate steps allocates a temporary array for each. Two passes, two allocations.</p></div>
+          <div class="card jl"><div class="tag">Fused</div><p><code>@. x^2 + 1</code> fuses to one loop, zero temporaries.</p></div>
+        </div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>What does the <code class="inl">@.</code> macro do to every operator in an expression?</li>
+          <li>Why is the fused version faster than computing it as two separate steps?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.7 VIEWS ============ -->
+      <section class="page" id="m1-views" data-crumb="1.7 · Mutation &amp; Views" data-chap="m1">
+        <div class="kick">Section 1.7</div>
+        <h2>Mutation &amp; views — slices copy by default</h2>
+        <div class="block note"><div class="bh">The trap</div>A slice <em>copies</em> in Julia, unlike array libraries where slicing returns a view that aliases the original. When you want the no-copy alias for performance, ask for it explicitly with <code class="inl">@view</code>.</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>v = <span class="f">collect</span>(<span class="n">1</span>:<span class="n">5</span>)
+w = v[<span class="n">2</span>:<span class="n">4</span>]          <span class="c"># a COPY</span>
+w[<span class="n">1</span>] = <span class="n">99</span>; v          <span class="c"># [1,2,3,4,5] — unchanged</span>
+
+u = <span class="k">@view</span> v[<span class="n">2</span>:<span class="n">4</span>]   <span class="c"># shares memory with v</span>
+u[<span class="n">1</span>] = <span class="n">99</span>; v          <span class="c"># [1,99,3,4,5] — CHANGED</span></code></pre>
+        <p>Default to copies for clarity. Reach for <code class="inl">@view</code> in hot loops where you slice large arrays and don't need a separate copy — it avoids the allocation.</p>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>After <code class="inl">w = v[2:4]; w[1] = 0</code>, is <code class="inl">v</code> changed? What about with <code class="inl">@view</code>?</li>
+          <li>When is <code class="inl">@view</code> the right call rather than a copy?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.8 TYPE STABILITY ============ -->
+      <section class="page" id="m1-stability" data-crumb="1.8 · Type Stability" data-chap="m1">
+        <div class="kick">Section 1.8</div>
+        <h2>Performance = type stability</h2>
+        <div class="block def"><div class="bh">Definition · Type stability</div>A function is <strong>type-stable</strong> when the compiler can prove each variable holds one concrete type throughout — so the output type depends only on the input <em>types</em>, never their <em>values</em>.</div>
+        <p>The canonical trap is the accumulator seed. For \(s=\sum_i x_i^2\):</p>
+        <div class="contrast">
+          <div class="card jl"><div class="tag">stable</div><p><code>s = zero(eltype(v))</code> — born in the data's type. <code>0.0</code> for floats.</p></div>
+          <div class="card py"><div class="tag">unstable</div><p><code>s = 0</code> — an <code>Int</code> that flips to <code>Float64</code> on the first <code>+=</code>; compiler carries <code>::Union</code>.</p></div>
+        </div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · diagnose</span></div><code><span class="k">@code_warntype</span> <span class="f">sumsq</span>(<span class="f">rand</span>(<span class="n">100</span>))   <span class="c"># look for ::Union / ::Any in red</span>
+<span class="k">@time</span> <span class="f">sumsq</span>(<span class="f">rand</span>(<span class="n">10</span>^<span class="n">6</span>))      <span class="c"># run TWICE — ignore the first (compile time)</span></code></pre>
+        <div class="block note"><div class="bh">Two more rules</div>Never benchmark the first call. Never run hot computation against an untyped <strong>global</strong> — wrap it in a function so the compiler can specialize.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>Why does seeding <code class="inl">s = 0</code> make a float reducer unstable, and what is the one-token fix?</li>
+          <li>What two things does <code class="inl">@code_warntype</code> highlight that signal instability?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.9 PROJECT ============ -->
+      <section class="page" id="m1-project" data-crumb="1.9 · Project Hygiene" data-chap="m1">
+        <div class="kick">Section 1.9</div>
+        <h2>Project hygiene — do it once for the course</h2>
+        <p>Reproducibility is a competitor skill. Make the course folder its own environment so every package version is pinned.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">pkg mode</span></div><code>julia&gt; ]                       <span class="c"># enter package mode</span>
+(@v1.x) pkg&gt; activate .        <span class="c"># this folder becomes its own environment</span>
+(JuliaCerts) pkg&gt; add DataFrames CSV MLJ EvoTrees
+(JuliaCerts) pkg&gt; status</code></pre>
+        <p>This writes <code class="inl">Project.toml</code> (what you asked for) and <code class="inl">Manifest.toml</code> (every exact resolved version). Commit both — the environment rebuilds identically on any machine. Julia's built-in answer to <code class="inl">requirements.txt</code> plus a lockfile.</p>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>What is the difference between <code class="inl">Project.toml</code> and <code class="inl">Manifest.toml</code>?</li>
+          <li>Why commit both files rather than just one?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 1.10 PRACTICE ============ -->
+      <section class="page" id="m1-practice" data-crumb="1.10 · Practice" data-chap="m1">
+        <div class="kick">Section 1.10</div>
+        <h2>Practice &amp; the exam gate</h2>
+        <p>Implement each, make the asserts pass, then sit <code class="inl">exams/M1_exam.jl</code>. The companion <a onclick="show('m1-practice')">boss-drills</a> set pushes these harder with benchmarks you must beat.</p>
+        <div class="block ex"><div class="bh">P1 · dot product (no LinearAlgebra)</div>\(a\cdot b=\sum_i a_i b_i\). Either a loop or <code class="inl">sum(a .* b)</code>. Target: <code class="inl">mydot([1,2,3],[4,5,6]) == 32</code>.</div>
+        <div class="block ex"><div class="bh">P2 · L2 norm on your dot</div>\(\lVert v\rVert_2=\sqrt{v\cdot v}\), so <code class="inl">mynorm(v) = sqrt(mydot(v,v))</code>. Target: <code class="inl">mynorm([3.0,4.0]) ≈ 5.0</code>.</div>
+        <div class="block ex"><div class="bh">P3 · z-score standardize</div>\(z_i=(v_i-\mu)/\sigma\) as one broadcast: <code class="inl">(v .- mean(v)) ./ std(v)</code>. You reuse this exact transform in Module 7.</div>
+        <div class="block ex"><div class="bh">P4 · fix the instability</div>Reseed the accumulator with <code class="inl">zero(eltype(v))</code>, then verify with <code class="inl">@code_warntype</code> — no red <code class="inl">::Union</code>.</div>
+        <div class="block rq"><div class="bh">Boss · vectorize and beat the clock</div>Take a naive squared-difference loop, make it idiomatic and type-stable, and prove a measurable speedup with <code class="inl">@btime</code>. Pass = correct result AND faster. This is the Module 1 exam's boss competency.</div>
+
+        <h3>Project Euler · solve in Julia, check below</h3>
+        <p>Write Julia to compute each answer, then type it in and press <b>Check</b>. The answer isn't stored in the page — you only get a ✓ when you've actually solved it. These drill the loop, comprehension, reduction, and <code class="inl">BigInt</code> muscles from this module.</p>
+
+        <div class="block ch" data-answer-hash="3046528728">
+          <div class="bh">PE 1 · Multiples of 3 or 5</div>
+          <p>Find the sum of all the multiples of 3 or 5 below 1000. A comprehension with a predicate filter is a one-liner: <code class="inl">sum(n for n in 1:999 if n%3==0 || n%5==0)</code>.</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="your answer" aria-label="PE1 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+
+        <div class="block ch" data-answer-hash="1397570973">
+          <div class="bh">PE 6 · Sum-square difference</div>
+          <p>For the first one hundred natural numbers, find \(\left(\sum_{k=1}^{100} k\right)^2 - \sum_{k=1}^{100} k^2\). Two reductions and a subtraction — mind the accumulator type from §1.8.</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="your answer" aria-label="PE6 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+
+        <div class="block ch" data-answer-hash="2292606125">
+          <div class="bh">PE 20 · Digit sum of 100!</div>
+          <p>Find the sum of the digits of \(100!\). Julia does this exactly with no overflow: <code class="inl">factorial(big(100))</code> returns a <code class="inl">BigInt</code>; turn it into digits and sum them.</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="your answer" aria-label="PE20 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+
+        <p style="margin-top:14px">Pass the exam at ≥ 80% and you unlock <a onclick="show('m2-intro')">Module 2 · Linear Algebra I</a>, where this dot product becomes a linear prediction \(X\beta\).</p>
+      </section>
+
+      <!-- ============ M2 INTRO ============ -->
+      <section class="page" id="m2-intro" data-crumb="2 · Linear Algebra I" data-chap="m2">
+        <div class="kick">Module 2</div>
+        <h2>Linear Algebra I, in Julia</h2>
+        <p class="lead">Vectors, the dot product, norms, and matrices — the algebra under every feature matrix and prediction, taught from zero, always against running code.</p>
+        <p>Everything here is the substrate for the rest of the program. A linear model is a dot product (M7). A feature matrix times a weight vector is a stack of dot products (§2.7). Least squares is a projection measured by a norm (M5). Ridge and Lasso are norm penalties (M7). Get vectors and norms solid now and the modeling later is mostly bookkeeping.</p>
+        <div class="block def"><div class="bh">Competency · Module 2</div>Compute and reason about vectors, dot products, norms, and matrix products by hand <em>and</em> in idiomatic Julia; implement <code class="inl">mydot</code>/<code class="inl">mynorm</code> from scratch with type-stable accumulators; and read \(\hat y = X\beta\) as "one dot product per row."</div>
+        <p>The payoff line of the whole module: a linear prediction over a dataset is the single expression \(\hat y = X\beta\). Sections: vectors and the two operations, linear combinations &amp; span, the dot product, norms, matrices, transpose &amp; identity, the matrix products, the <code class="inl">LinearAlgebra</code> stdlib with column-major performance, and practice.</p>
+      </section>
+
+      <!-- ============ 2.1 VECTORS ============ -->
+      <section class="page" id="m2-vectors" data-crumb="2.1 · Vectors, Addition &amp; Scaling" data-chap="m2">
+        <div class="kick">Section 2.1</div>
+        <h2>Vectors, and the two operations that define them</h2>
+        <p>A <strong>scalar</strong> is a single number: \(3\), \(-1.5\), \(\pi\). A <strong>vector</strong> is an ordered list of \(n\) scalars — and the ordering is the whole point: position \(i\) means something fixed. We write a vector in \(\mathbb{R}^n\) (the set of all length-\(n\) real lists) as a column:</p>
+        <div class="eq">\[ v = \begin{bmatrix} v_1 \\ v_2 \\ \vdots \\ v_n \end{bmatrix} \in \mathbb{R}^{n} \]</div>
+        <p>Carry <em>two</em> readings of the same object — you need both:</p>
+        <table class="tt">
+          <tr><th>Reading</th><th>What a vector "is"</th><th>ML example</th></tr>
+          <tr><td>a point</td><td>a location in \(n\)-dimensional space</td><td>one row of your dataset — a single house, described by \(n\) features</td></tr>
+          <tr><td>an arrow</td><td>a direction + length from the origin</td><td>a weight vector \(\beta\) pointing the way the prediction increases fastest</td></tr>
+        </table>
+        <p>In Julia a vector is the one-dimensional <code class="inl">Array</code> from Module 1, here carrying mathematical meaning:</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>v = [<span class="n">2.0</span>, <span class="n">1.0</span>, <span class="n">3.0</span>]   <span class="c"># 3-element Vector{Float64} — commas ⇒ a column</span>
+<span class="f">length</span>(v)             <span class="c"># 3 — its dimension n</span>
+v[<span class="n">2</span>]                  <span class="c"># 1.0 — 1-based, as in M1</span></code></pre>
+        <div class="block note"><div class="bh">Notation, settled once</div>Commas build a <strong>column</strong> vector: <code class="inl">[1, 2, 3]</code> is \(3\times1\). Spaces build a <strong>row</strong> (a \(1\times3\) matrix): <code class="inl">[1 2 3]</code>. Different shapes — and the distinction bites the instant we multiply in §2.7. A <code class="inl">Vector</code> is honestly a column; math convention in this course: a plain symbol \(v\) means a column. Julia won't quietly reinterpret a shape — respect it.</div>
+        <p>Everything in linear algebra is built from exactly two moves: <strong>add</strong> two vectors, and <strong>scale</strong> a vector by a scalar. Both act componentwise. Addition requires equal dimensions; scaling by \(c\in\mathbb{R}\) stretches (\(|c|>1\)), shrinks (\(|c|&lt;1\)), or flips (\(c&lt;0\)) the arrow:</p>
+        <div class="eq">\[ a + b = \begin{bmatrix} a_1 + b_1 \\ \vdots \\ a_n + b_n \end{bmatrix} \qquad\quad c\,v = \begin{bmatrix} c\,v_1 \\ \vdots \\ c\,v_n \end{bmatrix} \]</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>a = [<span class="n">1.0</span>, <span class="n">2.0</span>]
+b = [<span class="n">3.0</span>, <span class="n">0.0</span>]
+a + b        <span class="c"># [4.0, 2.0] — vector addition is built in</span>
+<span class="n">2</span> * a        <span class="c"># [2.0, 4.0] — scaling: scalar * vector</span>
+<span class="n">2</span>a + <span class="n">3</span>b      <span class="c"># [11.0, 4.0] — Julia even lets you write 2a (no *)</span></code></pre>
+        <div class="contrast">
+          <div class="card py"><div class="tag">the trap</div><p>Reaching for the broadcast dot here — or writing <code>a * b</code> for two vectors, which is an <em>error</em> (undefined). <code>a .* b</code> is the elementwise (Hadamard) product — a different thing from anything in this module.</p></div>
+          <div class="card jl"><div class="tag">the idiom</div><p>Vector <code>+</code> and scalar <code>*</code> are true linear-algebra operations, so they are plain <code>+</code> and <code>*</code> — no dot. The dot from M1 §1.6 means "elementwise," and you only reach for it when you mean exactly that.</p></div>
+        </div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>What shape is <code class="inl">[1, 2, 3]</code>, and what shape is <code class="inl">[1 2 3]</code>? Why will the difference matter later?</li>
+          <li>Compute \(2a - b\) for \(a=[1,2]\), \(b=[3,0]\) by hand, then in Julia. Which operators did you use, and why no dots?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 2.2 SPAN ============ -->
+      <section class="page" id="m2-span" data-crumb="2.2 · Linear Combinations &amp; Span" data-chap="m2">
+        <div class="kick">Section 2.2</div>
+        <h2>Linear combinations &amp; span</h2>
+        <p>Chain the two operations of §2.1 and you get the central idea of the whole subject.</p>
+        <div class="block def"><div class="bh">Definition · Linear combination</div>A <strong>linear combination</strong> of vectors \(v^{(1)},\dots,v^{(k)}\) with scalar weights \(c_1,\dots,c_k\) is \[ c_1 v^{(1)} + c_2 v^{(2)} + \cdots + c_k v^{(k)} = \sum_{j=1}^{k} c_j\, v^{(j)}. \] That is the <em>only</em> thing linear algebra ever does to vectors: scale them and add them.</div>
+        <p>The <strong>span</strong> of a set of vectors is every linear combination you can reach by sweeping the weights over all reals — geometrically, the line, plane, or higher "flat through the origin" they trace out.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>e1 = [<span class="n">1.0</span>, <span class="n">0.0</span>]
+e2 = [<span class="n">0.0</span>, <span class="n">1.0</span>]
+<span class="n">3</span>*e1 + <span class="n">4</span>*e2     <span class="c"># [3.0, 4.0] — every 2-vector is a combo of e1, e2</span>
+<span class="c"># span(e1, e2) is ALL of R²: any [x, y] = x*e1 + y*e2</span>
+<span class="c"># span([1.0, 1.0]) alone is only the diagonal LINE y = x</span></code></pre>
+        <div class="block note"><div class="bh">Why a competitor cares</div>A linear model's prediction is a linear combination of the <em>feature columns</em>, weighted by the coefficients \(\beta\). "What can my linear model possibly predict?" is literally "what's in the span of my feature columns?" When two features are redundant — one a scaled copy of another — they add <em>nothing</em> to the span. That's <strong>multicollinearity</strong>, the villain of M5. You're meeting it here in its honest geometric form, before it has a scary name.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>Is \([5, 5]\) in the span of \([1, 1]\)? Is \([5, 4]\)? Justify both with explicit weights or a proof none exist.</li>
+          <li>If a dataset's third column equals twice its first column, what does that do to the span of the columns — and why is that bad news for a linear model?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 2.3 DOT PRODUCT ============ -->
+      <section class="page" id="m2-dot" data-crumb="2.3 · The Dot Product" data-chap="m2">
+        <div class="kick">Section 2.3</div>
+        <h2>The dot product — one number, three meanings</h2>
+        <div class="block def"><div class="bh">Definition · Dot product</div>For \(a, b \in \mathbb{R}^n\), \[ a \cdot b = \sum_{i=1}^{n} a_i\,b_i = a_1 b_1 + \cdots + a_n b_n. \] Multiply componentwise, then sum — two vectors in, one <em>scalar</em> out.</div>
+        <p>This is the most important operation in the course. Memorize all three readings — each is the right lens in a different module.</p>
+        <p><strong>Reading 1 — a weighted sum (this is a prediction).</strong> If \(x\) is a feature row and \(\beta\) a weight vector, then \(\beta\cdot x\) is exactly a linear-model score: \[ \hat{y} = \beta \cdot x = \sum_{i=1}^{n} \beta_i\, x_i \quad(+\,b\ \text{for the intercept}). \]</p>
+        <p><strong>Reading 2 — geometry: length and angle.</strong> The dot product encodes the angle \(\theta\) between the two arrows: \[ a \cdot b = \lVert a\rVert\, \lVert b\rVert \cos\theta. \] Burn in the consequence: \(a\cdot b = 0\) means the vectors are <strong>orthogonal</strong> (\(\theta = 90^\circ\)) — this single fact is the engine of least squares in M5. Positive dot: broadly the same direction. Negative: opposing.</p>
+        <p><strong>Reading 3 — similarity.</strong> Normalize out the lengths and the dot product becomes <strong>cosine similarity</strong>, a pure measure of directional agreement in \([-1,1]\): \[ \cos\theta = \frac{a \cdot b}{\lVert a\rVert\,\lVert b\rVert}. \] In M4 you'll see Pearson correlation is exactly this — the cosine similarity of two mean-centered feature columns. Same operation, statistical costume.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · from scratch</span></div><code>a = [<span class="n">1.0</span>, <span class="n">2.0</span>, <span class="n">3.0</span>]
+b = [<span class="n">4.0</span>, <span class="n">5.0</span>, <span class="n">6.0</span>]
+<span class="f">sum</span>(a .* b)        <span class="c"># 32.0 — Hadamard, then sum. Reads like the formula.</span>
+
+<span class="k">function</span> <span class="f">mydot</span>(a, b)        <span class="c"># the explicit loop — and in Julia, loops are FAST (M1)</span>
+    <span class="k">@assert</span> <span class="f">length</span>(a) == <span class="f">length</span>(b)
+    s = <span class="f">zero</span>(<span class="f">promote_type</span>(<span class="f">eltype</span>(a), <span class="f">eltype</span>(b)))   <span class="c"># type-stable seed (§1.8!)</span>
+    <span class="k">for</span> i <span class="k">in</span> <span class="f">eachindex</span>(a, b)
+        s += a[i] * b[i]
+    <span class="k">end</span>
+    <span class="k">return</span> s
+<span class="k">end</span>
+<span class="f">mydot</span>(a, b)        <span class="c"># 32.0</span></code></pre>
+        <div class="block note"><div class="bh">Callback to §1.8 — don't write <code class="inl">s = 0</code></div>Seeding the accumulator with the literal <code class="inl">0</code> (an <code class="inl">Int</code>) makes <code class="inl">s</code> flip <code class="inl">Int → Float64</code> on the first <code class="inl">+=</code> with float data — the exact type instability from Module 1. <code class="inl">zero(promote_type(...))</code> gives the right zero for whatever the inputs are and stays one concrete type. <code class="inl">eachindex(a, b)</code> iterates valid indices once and asserts matching shapes idiomatically.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>By hand: \([2,-1,0]\cdot[3,4,5]\). Then confirm with your <code class="inl">mydot</code>.</li>
+          <li>Find a non-zero vector orthogonal to \([3, 4]\) and verify the dot is \(0.0\). (Hint: swap and negate.)</li>
+          <li>Which of the three readings explains why \(a\cdot b\) can be zero even when neither vector is?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 2.4 NORMS ============ -->
+      <section class="page" id="m2-norms" data-crumb="2.4 · Norms" data-chap="m2">
+        <div class="kick">Section 2.4</div>
+        <h2>Norms — measuring the size of a vector</h2>
+        <p>A norm answers "how big is this vector?" with a single non-negative number \(\lVert v \rVert\). Two of them run the whole course.</p>
+        <div class="block def"><div class="bh">Definition · L2 and L1</div>The <strong>L2 (Euclidean) norm</strong> is Pythagoras generalized to \(n\) dimensions — the square root of the dot product of \(v\) with itself: \[ \lVert v \rVert_2 = \sqrt{\,v \cdot v\,} = \sqrt{\sum_{i=1}^{n} v_i^{2}}. \] The <strong>L1 (Manhattan) norm</strong> is the sum of absolute values — distance if you can only travel along the axes, block by block: \[ \lVert v \rVert_1 = \sum_{i=1}^{n} |v_i|. \]</div>
+        <p>The identity \(\lVert v\rVert_2^2 = v\cdot v\) is not a coincidence to memorize; it's the definition — and it reappears every time we minimize a squared error. <code class="inl">mynorm(v) = sqrt(mydot(v, v))</code>: the dot product of §2.3 is literally the machinery of length.</p>
+        <table class="tt">
+          <tr><th>Norm</th><th>Formula</th><th>Unit "ball"</th><th>Shows up as</th></tr>
+          <tr><td>L2 \(\lVert v\rVert_2\)</td><td>\(\sqrt{\sum v_i^2}\)</td><td>a round circle / sphere</td><td>Euclidean distance · Ridge penalty (M7)</td></tr>
+          <tr><td>L1 \(\lVert v\rVert_1\)</td><td>\(\sum |v_i|\)</td><td>a diamond — corners on the axes</td><td>robust distance · Lasso penalty (M7)</td></tr>
+        </table>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · from scratch</span></div><code>v = [<span class="n">3.0</span>, <span class="n">4.0</span>]
+<span class="f">sqrt</span>(<span class="f">sum</span>(abs2, v))   <span class="c"># 5.0 — L2; abs2(x)=x², no temporary array</span>
+<span class="f">sum</span>(<span class="f">abs</span>, v)          <span class="c"># 7.0 — L1; function-first sum, idiomatic &amp; fast</span>
+<span class="f">mynorm</span>(v) = <span class="f">sqrt</span>(<span class="f">mydot</span>(v, v))   <span class="c"># build L2 on YOUR dot product</span>
+<span class="f">mynorm</span>(v)            <span class="c"># 5.0</span></code></pre>
+        <div class="block note"><div class="bh">Idiom · <code class="inl">sum(f, xs)</code></div><code class="inl">sum(abs2, v)</code> applies <code class="inl">abs2</code> to each element and sums in one pass — no intermediate <code class="inl">v.^2</code> array. This function-first form of <code class="inl">sum</code>/<code class="inl">mapreduce</code> is the idiomatic way to fuse a transform into a reduction, and it's faster than building the squared array first.</div>
+        <div class="block ex"><div class="bh">The payoff you're banking for M7</div>Regularization shrinks a model by penalizing the norm of its coefficient vector \(\beta\). Why two norms behave so differently is pure geometry: the L1 diamond has sharp corners sitting <em>on the axes</em> — optimization tends to land on a corner, where some coefficients are exactly \(0\). That's how Lasso does feature selection. The L2 circle is smooth, so Ridge shrinks coefficients toward zero but rarely <em>to</em> zero. You don't need this yet; you need to know the diamond-vs-circle picture is the entire reason. Hold onto it.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>Why is \(\lVert v\rVert_2^2 = v\cdot v\) true by definition rather than a theorem?</li>
+          <li>For \(v=[1,-1,1,-1]\), compute \(\lVert v\rVert_1\) and \(\lVert v\rVert_2\) by hand. Which is bigger, and is that always the case?</li>
+          <li>Why is <code class="inl">sum(abs2, v)</code> preferable to <code class="inl">sum(v.^2)</code>?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 2.5 MATRICES ============ -->
+      <section class="page" id="m2-matrices" data-crumb="2.5 · Matrices" data-chap="m2">
+        <div class="kick">Section 2.5</div>
+        <h2>A matrix is two things at once</h2>
+        <p>A matrix is a rectangular grid of numbers with \(m\) rows and \(n\) columns — an element of \(\mathbb{R}^{m\times n}\). Entry \(a_{ij}\) sits at row \(i\), column \(j\):</p>
+        <div class="eq">\[ A = \begin{bmatrix} a_{11} &amp; a_{12} &amp; \cdots &amp; a_{1n} \\ a_{21} &amp; a_{22} &amp; \cdots &amp; a_{2n} \\ \vdots &amp; &amp; \ddots &amp; \vdots \\ a_{m1} &amp; a_{m2} &amp; \cdots &amp; a_{mn} \end{bmatrix} \in \mathbb{R}^{m\times n} \]</div>
+        <p>You must carry two readings simultaneously; switching between them on demand is most of the skill in this course.</p>
+        <table class="tt">
+          <tr><th>Reading</th><th>What the matrix "is"</th><th>ML example</th></tr>
+          <tr><td>data</td><td>a stack of \(m\) rows, each a length-\(n\) vector</td><td>your feature matrix \(X\): one row per house, one column per feature</td></tr>
+          <tr><td>operator</td><td>a function that eats a vector and returns a vector</td><td>a transform that rotates/scales/projects — in M5, projects \(y\) onto your features</td></tr>
+        </table>
+        <p>The "data" reading is where you live as a competitor: \(X\) is the table. The "operator" reading is where the math lives: multiplying by a matrix is applying a linear function. The bridge is §2.7 — multiply the data matrix \(X\) by a weight vector \(\beta\) and the operator reading turns the table into a column of predictions.</p>
+        <div class="block note"><div class="bh">Shape is a contract</div>\(m\times n\) reads "rows by columns," always in that order. Almost every error in linear-algebra code is a shape mismatch. Train yourself to write the shape over every object before you multiply. Julia enforces the contract and throws <code class="inl">DimensionMismatch</code> the moment you break it — a feature, not an annoyance.</div>
+        <p>Building one in Julia, you literally type the grid — spaces separate columns, newlines (or <code class="inl">;</code>) end rows:</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>A = [<span class="n">1.0</span> <span class="n">2.0</span> <span class="n">3.0</span>      <span class="c"># row 1 — spaces separate columns</span>
+     <span class="n">4.0</span> <span class="n">5.0</span> <span class="n">6.0</span>]     <span class="c"># row 2 — newline (or ;) ends a row → 2×3 Matrix{Float64}</span>
+<span class="f">size</span>(A)        <span class="c"># (2, 3) — (rows, cols)</span>
+<span class="f">size</span>(A, <span class="n">1</span>)     <span class="c"># 2 — number of rows (m)</span>
+A[<span class="n">2</span>, <span class="n">3</span>]        <span class="c"># 6.0 — [row, col], 1-based</span>
+A[<span class="n">1</span>, :]        <span class="c"># [1.0, 2.0, 3.0] — row 1, back as a Vector</span>
+A[:, <span class="n">2</span>]        <span class="c"># [2.0, 5.0] — column 2</span></code></pre>
+        <div class="block note"><div class="bh">Callback to §1.7 — slices copy, views don't</div><code class="inl">A[:, 2]</code> allocates a fresh array; <code class="inl">@view A[:, 2]</code> aliases the original memory. Exactly the rule you learned on vectors, now on 2-D data. In a tight loop over the columns of a big \(X\), <code class="inl">@view</code> is the difference between zero allocations and one per column.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>For a \(150\times 4\) feature matrix, what are \(m\) and \(n\), and what does one row represent? One column?</li>
+          <li>What expression extracts column 3 of <code class="inl">A</code> without allocating?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 2.6 TRANSPOSE & IDENTITY ============ -->
+      <section class="page" id="m2-transpose" data-crumb="2.6 · Transpose &amp; Identity" data-chap="m2">
+        <div class="kick">Section 2.6</div>
+        <h2>Transpose and the identity</h2>
+        <p>The <strong>transpose</strong> \(A^\top\) turns the \(m\times n\) matrix \(A\) into the \(n\times m\) matrix whose \((i,j)\) entry is \(a_{ji}\) — rows become columns:</p>
+        <div class="eq">\[ A=\begin{bmatrix}1&amp;2&amp;3\\4&amp;5&amp;6\end{bmatrix}\ (2\times3) \quad\Longrightarrow\quad A^\top=\begin{bmatrix}1&amp;4\\2&amp;5\\3&amp;6\end{bmatrix}\ (3\times2) \]</div>
+        <p>Two facts you'll use constantly: \((A^\top)^\top = A\), and \((AB)^\top = B^\top A^\top\) — the order <em>reverses</em>. And the reason transpose is everywhere in M5: for column vectors \(a,b\), the product \(a^\top b\) is \((1\times n)(n\times 1) = 1\times 1\) — a single number — equal to \(a\cdot b\). The normal equations \(X^\top X\beta = X^\top y\) are built entirely from this move.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · LinearAlgebra</span></div><code><span class="k">using</span> <span class="t">LinearAlgebra</span>
+A = [<span class="n">1.0</span> <span class="n">2.0</span> <span class="n">3.0</span>; <span class="n">4.0</span> <span class="n">5.0</span> <span class="n">6.0</span>]   <span class="c"># 2×3</span>
+A'             <span class="c"># 3×2 — postfix ' is transpose (adjoint)</span>
+<span class="f">size</span>(A')       <span class="c"># (3, 2)</span>
+a = [<span class="n">1.0</span>, <span class="n">2.0</span>, <span class="n">3.0</span>]
+a' * a         <span class="c"># 14.0 — (1×3)(3×1) scalar; equals dot(a, a) = ‖a‖²</span></code></pre>
+        <div class="block note"><div class="bh">One subtlety — <code class="inl">'</code> is the adjoint</div>For real matrices (everything in this course) <code class="inl">A'</code> and <code class="inl">transpose(A)</code> are identical. For complex data <code class="inl">'</code> also conjugates (the "adjoint"); you don't have complex data here, so use <code class="inl">'</code> freely — just know that's why Julia has both names.</div>
+        <p>The <strong>identity</strong> \(I\) is the square matrix with \(1\)s on the diagonal, \(0\)s elsewhere — the "do nothing" operator: \(IA = A\), \(AI = A\), the matrix world's number \(1\). It anchors "inverse" (\(A^{-1}A=I\)) in M5, and it's how regularization adds \(\lambda I\) to \(X^\top X\) in M7.</p>
+        <div class="eq">\[ I_3=\begin{bmatrix}1&amp;0&amp;0\\0&amp;1&amp;0\\0&amp;0&amp;1\end{bmatrix} \]</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · LinearAlgebra</span></div><code>I              <span class="c"># the UniformScaling object — an identity of any size, lazily</span>
+A = [<span class="n">2.0</span> <span class="n">1.0</span>; <span class="n">0.0</span> <span class="n">3.0</span>]
+A * I          <span class="c"># == A — I adapts to A's size, no allocation</span>
+<span class="f">I</span>(<span class="n">3</span>)           <span class="c"># a concrete 3×3 identity Matrix, if you need one</span>
+A + <span class="n">2.0</span>*I      <span class="c"># adds 2 to the diagonal only — the Ridge move (M7 preview)</span></code></pre>
+        <div class="block note"><div class="bh">Why <code class="inl">I</code> is clever</div>Plain <code class="inl">I</code> is a <code class="inl">UniformScaling</code>: no size, no stored zeros. It infers the right dimension from whatever it's combined with, so <code class="inl">A + λ*I</code> never builds an \(n\times n\) array of mostly zeros. Idiomatic Julia: represent structure (an identity) as structure, not as dense data.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>What is the shape of \(X^\top X\) if \(X\) is \(m\times n\)? Why does that product appear in least squares?</li>
+          <li>Why is \((AB)^\top = B^\top A^\top\) and not \(A^\top B^\top\)? Check shapes for \(A\in\mathbb{R}^{2\times3}\), \(B\in\mathbb{R}^{3\times4}\).</li>
+          <li>What does <code class="inl">A + 0.1*I</code> change about <code class="inl">A</code>, exactly?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 2.7 Xβ ============ -->
+      <section class="page" id="m2-matvec" data-crumb="2.7 · Xβ — the Matrix Products" data-chap="m2">
+        <div class="kick">Section 2.7</div>
+        <h2>The matrix–vector product — this is \(X\beta\)</h2>
+        <p>Here is the section the whole module was built for.</p>
+        <div class="block def"><div class="bh">Definition · Matrix–vector product</div>For \(A\in\mathbb{R}^{m\times n}\) and \(x\in\mathbb{R}^{n}\), the product \(Ax\in\mathbb{R}^m\) has \(i\)-th entry equal to the <em>dot product of row \(i\) with \(x\)</em>: \[ (Ax)_i = \sum_{j=1}^{n} a_{ij}\,x_j \quad\Longrightarrow\quad Ax=\begin{bmatrix} \text{row}_1\cdot x\\ \vdots\\ \text{row}_m\cdot x\end{bmatrix} \] Shape contract: \((m\times n)(n\times 1)=(m\times 1)\) — the inner \(n\)s must match, and they cancel.</div>
+        <p>Read that slowly: a matrix–vector product is just <strong>many dot products at once</strong>, one per row. So if \(X\) is your feature matrix and \(\beta\) your weight vector, \(X\beta\) is the column of predictions — one per row, the whole dataset in a single operation:</p>
+        <div class="eq">\[ \hat y = X\beta = \begin{bmatrix} x^{(1)}\cdot\beta\\ x^{(2)}\cdot\beta\\ \vdots\\ x^{(m)}\cdot\beta \end{bmatrix} \qquad X\in\mathbb{R}^{m\times n},\ \beta\in\mathbb{R}^{n},\ \hat y\in\mathbb{R}^{m} \]</div>
+        <p>This is the entire reason linear algebra is the language of ML: "for each row, compute the weighted sum" collapses to one symbol.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · the linear model, in one line</span></div><code><span class="k">using</span> <span class="t">LinearAlgebra</span>
+<span class="c"># 4 houses, 3 features (rows = examples, cols = features)</span>
+X = [<span class="n">1.0</span> <span class="n">3.0</span> <span class="n">2.0</span>
+     <span class="n">1.0</span> <span class="n">1.0</span> <span class="n">0.0</span>
+     <span class="n">1.0</span> <span class="n">4.0</span> <span class="n">5.0</span>
+     <span class="n">1.0</span> <span class="n">2.0</span> <span class="n">1.0</span>]            <span class="c"># 4×3 (col 1 of 1s = the intercept column)</span>
+β = [<span class="n">0.5</span>, <span class="n">2.0</span>, <span class="n">-1.0</span>]          <span class="c"># 3-vector of weights</span>
+ŷ = X * β                     <span class="c"># [4.5, 2.5, 3.5, 3.5] — type ŷ as y\hat TAB</span>
+
+<span class="c"># It really is a stack of dot products — prove it row by row:</span>
+[<span class="f">dot</span>(X[i, :], β) <span class="k">for</span> i <span class="k">in</span> <span class="n">1</span>:<span class="f">size</span>(X, <span class="n">1</span>)]   <span class="c"># identical to X*β</span></code></pre>
+        <div class="block note"><div class="bh">The intercept trick you'll reuse all course</div>That leading column of <code class="inl">1.0</code>s is how the bias \(b\) folds into \(\beta\): the first weight multiplies a constant \(1\) in every row, adding the same offset to every prediction. "Augment \(X\) with a ones column" means you never carry a separate intercept — \(X\beta\) alone is the full affine model. M5 and M7 assume you do this.</div>
+        <p>The <strong>matrix–matrix product</strong> is the same rule applied to every column of the right matrix. For \(A\in\mathbb{R}^{m\times n}\), \(B\in\mathbb{R}^{n\times p}\): \[ c_{ij} = \sum_{k=1}^{n} a_{ik}\,b_{kj} = (\text{row } i \text{ of } A)\cdot(\text{col } j \text{ of } B), \qquad C = AB \in\mathbb{R}^{m\times p}. \] The matrix–vector product is just the special case \(p=1\).</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>A = [<span class="n">1.0</span> <span class="n">2.0</span>; <span class="n">3.0</span> <span class="n">4.0</span>]
+B = [<span class="n">5.0</span> <span class="n">6.0</span>; <span class="n">7.0</span> <span class="n">8.0</span>]
+A * B     <span class="c"># [19.0 22.0; 43.0 50.0] — true matrix product</span>
+<span class="c"># c[1,1] = row1(A)·col1(B) = 1·5 + 2·7 = 19 ✓</span>
+A .* B    <span class="c"># [5.0 12.0; 21.0 32.0] — ELEMENTWISE, a different thing entirely</span></code></pre>
+        <div class="contrast">
+          <div class="card py"><div class="tag">the trap</div><p>Using <code>A .* B</code> when you meant the matrix product, or <code>A * B</code> when you meant elementwise. Both run without error on square matrices — and give different answers.</p></div>
+          <div class="card jl"><div class="tag">the idiom</div><p>The rule to burn in: a dot means elementwise (<code>.*</code>, <code>.+</code>, <code>.^</code> — M1 broadcasting); no dot means linear algebra (<code>*</code> is matmul). The dot is the visible, deliberate signal.</p></div>
+        </div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>By hand: \(Ax\) for \(A=\begin{bmatrix}2&amp;0\\1&amp;3\\0&amp;1\end{bmatrix}\), \(x=\begin{bmatrix}1\\2\end{bmatrix}\). Write the result's shape <em>before</em> computing, then confirm with <code class="inl">A*x</code>.</li>
+          <li>Why does \(xA\) (vector first) error here while \(Ax\) works? Answer in terms of the shape contract.</li>
+          <li>If \(X\) is \(1000\times 20\) and \(\beta\) has 20 entries, how many dot products does <code class="inl">X*β</code> perform, and what shape comes back?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 2.8 STDLIB & COLUMN-MAJOR ============ -->
+      <section class="page" id="m2-stdlib" data-crumb="2.8 · LinearAlgebra &amp; Column-Major" data-chap="m2">
+        <div class="kick">Section 2.8</div>
+        <h2>The <code class="inl">LinearAlgebra</code> stdlib — and why order matters</h2>
+        <p>You implemented <code class="inl">dot</code> and <code class="inl">norm</code> by hand to own them. In real code you call the standard library, which dispatches to tuned BLAS routines. It ships with Julia — just import it.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · LinearAlgebra</span></div><code><span class="k">using</span> <span class="t">LinearAlgebra</span>
+a = [<span class="n">1.0</span>, <span class="n">2.0</span>, <span class="n">3.0</span>]; b = [<span class="n">4.0</span>, <span class="n">5.0</span>, <span class="n">6.0</span>]
+<span class="f">dot</span>(a, b)      <span class="c"># 32.0 — same as your mydot, BLAS-backed</span>
+a ⋅ b          <span class="c"># 32.0 — the ⋅ operator: type \cdot TAB. Reads like math.</span>
+<span class="f">norm</span>(a)        <span class="c"># 3.741… — L2 by default</span>
+<span class="f">norm</span>(a, <span class="n">1</span>)     <span class="c"># 6.0 — L1: pass the p</span>
+<span class="f">norm</span>(a, <span class="t">Inf</span>)   <span class="c"># 3.0 — L∞: the max |vᵢ|</span>
+<span class="f">normalize</span>(a)   <span class="c"># unit vector: a / norm(a), length 1</span></code></pre>
+        <table class="tt">
+          <tr><th>You want</th><th>Use</th><th>Not</th></tr>
+          <tr><td>a real dot product</td><td><code>dot(a, b)</code> or <code>a ⋅ b</code></td><td><code>sum(a .* b)</code> — correct, but allocates a temp</td></tr>
+          <tr><td>Euclidean length</td><td><code>norm(v)</code></td><td><code>sqrt(sum(v.^2))</code> — allocates <code>v.^2</code></td></tr>
+          <tr><td>predictions for all rows</td><td><code>X * β</code></td><td>a hand-written row loop — correct but more code</td></tr>
+          <tr><td>elementwise product</td><td><code>a .* b</code> (Hadamard)</td><td><code>a * b</code> — undefined for two vectors, errors</td></tr>
+        </table>
+        <p>Two matrix products can be mathematically equal yet differ wildly in speed — for two separate reasons, both of which matter on a big \(X\).</p>
+        <div class="block note"><div class="bh">Reason 1 · Associativity is free; cost is not</div>\((AB)C = A(BC)\) — same answer, very different work. If \(A\) is \(1\times1000\), \(B\) is \(1000\times1000\), \(C\) is \(1000\times1\), then \((AB)C\) forms a cheap \(1\times1000\) intermediate, while \(A(BC)\) forms a \(1000\times1000\) one — vastly more arithmetic for the identical result. Where you put the parentheses is a performance choice.</div>
+        <div class="block note"><div class="bh">Reason 2 · Column-major, now with teeth</div>From §1.5: a Julia <code class="inl">Matrix</code> lives in memory one full column at a time. Walking down a column touches contiguous memory; walking across a row jumps in strides and thrashes the cache. Algorithms that consume \(X\) column-by-column (most linear algebra) work <em>with</em> the grain.</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · loop order follows storage</span></div><code>M = <span class="f">rand</span>(<span class="n">2000</span>, <span class="n">2000</span>)
+<span class="k">function</span> <span class="f">col_major_sum</span>(M)          <span class="c"># inner loop runs DOWN a column — contiguous</span>
+    s = <span class="f">zero</span>(<span class="f">eltype</span>(M))
+    <span class="k">for</span> j <span class="k">in</span> <span class="f">axes</span>(M, <span class="n">2</span>), i <span class="k">in</span> <span class="f">axes</span>(M, <span class="n">1</span>)   <span class="c"># j outer, i inner</span>
+        s += M[i, j]
+    <span class="k">end</span>
+    s
+<span class="k">end</span>
+<span class="k">using</span> <span class="t">BenchmarkTools</span>
+<span class="k">@btime</span> <span class="f">col_major_sum</span>($M)   <span class="c"># noticeably faster than i-outer / j-inner</span>
+<span class="k">@btime</span> <span class="f">sum</span>($M)             <span class="c"># the built-in already traverses correctly</span></code></pre>
+        <div class="block ex"><div class="bh">The competitor's takeaways</div>Three habits: (1) trust <code class="inl">*</code> and the stdlib — they call BLAS, which already respects the layout; (2) when you hand-write a loop over a matrix, make the <em>row</em> index the inner loop so you march down columns; (3) when chaining matrices, pick the parenthesization that keeps intermediates small. You won't micro-optimize often, but knowing <em>why</em> <code class="inl">X*β</code> is fast keeps you from "helpfully" rewriting it into something slow.</div>
+        <div class="block rq"><div class="bh">Reading Questions</div><ol>
+          <li>For \(u^\top (M v)\) with \(M\) square and huge, which grouping is cheap and which builds a big intermediate?</li>
+          <li>Why does <code class="inl">dot(a, b)</code> beat <code class="inl">sum(a .* b)</code> even though both are \(O(n)\)?</li>
+        </ol></div>
+      </section>
+
+      <!-- ============ 2.9 PRACTICE ============ -->
+      <section class="page" id="m2-practice" data-crumb="2.9 · Practice" data-chap="m2">
+        <div class="kick">Section 2.9</div>
+        <h2>Practice &amp; the exam gate</h2>
+        <p>Open a Pluto cell. Implement each from scratch (<strong>no <code class="inl">LinearAlgebra</code> for P1–P3</strong> — that's the point), then verify against the stdlib. These are the exact muscles the M2 exam tests, including the "match <code class="inl">LinearAlgebra</code>" boss task.</p>
+        <div class="block ex"><div class="bh">P1 · <code class="inl">mydot(a, b)</code>, type-stable</div>\(a\cdot b=\sum_i a_i b_i\) with a type-stable accumulator (<code class="inl">zero(promote_type(...))</code>) and a dimension check. Targets: <code class="inl">mydot([1,2,3],[4,5,6]) == 32</code> and <code class="inl">mydot(a,b) ≈ dot(a,b)</code> for random float vectors; mismatched lengths must error.</div>
+        <div class="block ex"><div class="bh">P2 · <code class="inl">mynorm(v)</code> built on <code class="inl">mydot</code></div>Use the identity \(\lVert v\rVert_2 = \sqrt{v\cdot v}\): <code class="inl">mynorm(v) = sqrt(mydot(v, v))</code>. Targets: <code class="inl">mynorm([3.0,4.0]) ≈ 5.0</code> and <code class="inl">mynorm(v) ≈ norm(v)</code>. Use <code class="inl">≈</code> (<code class="inl">\approx</code> TAB), not <code class="inl">==</code> — floats accumulate rounding.</div>
+        <div class="block ex"><div class="bh">P3 · <code class="inl">l1(v)</code> and <code class="inl">cossim(a, b)</code></div><code class="inl">l1(v) = sum(abs, v)</code> and <code class="inl">cossim(a, b) = mydot(a,b) / (mynorm(a)*mynorm(b))</code>. Sanity: <code class="inl">cossim(v, v) ≈ 1.0</code> and <code class="inl">cossim([1,0],[0,1]) ≈ 0.0</code>.</div>
+        <div class="block ex"><div class="bh">P4 · the prediction, as a product</div><code class="inl">predict(β, x) = dot(β, x)</code>; confirm a hand-computed score: for \(\beta=[0.5,-1.0,2.0]\), \(x=[4.0,3.0,1.0]\), \(\hat y = 0.5\cdot4 - 1\cdot3 + 2\cdot1 = 1.0\). Then stack rows into a matrix and confirm <code class="inl">X*β</code> reproduces row-by-row <code class="inl">predict</code> calls.</div>
+
+        <h3>Self-checks · compute in Julia, verify below</h3>
+        <p>Write Julia for each, then type the answer and press <b>Check</b>. The answer isn't stored in the page — you only get a ✓ when you've actually computed it.</p>
+        <div class="block ch" data-answer-hash="2414203058">
+          <div class="bh">C1 · A clean L2 norm</div>
+          <p>Compute \(\lVert v\rVert_2\) for <code class="inl">v = collect(1.0:24.0)</code> with your <code class="inl">mynorm</code>. It comes out a whole number — enter it as an integer.</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="your answer" aria-label="C1 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+        <div class="block ch" data-answer-hash="1062521517">
+          <div class="bh">C2 · L1 ignores sign</div>
+          <p>Compute \(\lVert v\rVert_1\) for <code class="inl">v = [(-1)^k * k for k in 1:100]</code> with your <code class="inl">l1</code>. Before running it: why must the answer equal \(\sum_{k=1}^{100}k\)?</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="your answer" aria-label="C2 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+        <div class="block ch" data-answer-hash="906560429">
+          <div class="bh">C3 · A whole dataset in one product</div>
+          <p>Build <code class="inl">X = [Float64(i*j) for i in 1:50, j in 1:4]</code> (a 50×4 matrix) and <code class="inl">β = [1.0, -2.0, 3.0, -1.0]</code>. Compute <code class="inl">sum(X * β)</code> — enter it as an integer. Then explain why every entry of \(X\beta\) is \(2i\).</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="your answer" aria-label="C3 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+
+        <div class="block rq"><div class="bh">Boss · match the stdlib</div>For three random pairs <code class="inl">a, b = rand(5), rand(5)</code>, show <code class="inl">mydot(a,b) ≈ dot(a,b)</code>, <code class="inl">mynorm(a) ≈ norm(a)</code>, and <code class="inl">norm(normalize(a)) ≈ 1.0</code> — and state in one line why floats want <code class="inl">≈</code> rather than <code class="inl">==</code>. Pass = all checks green AND a type-stable <code class="inl">mydot</code> under <code class="inl">@code_warntype</code>.</div>
+        <p style="margin-top:14px">Pass the M2 exam at ≥ 80% and you unlock <a onclick="show('m3-intro')">Module 3 · DataFrames.jl</a>, where \(X\) stops being a toy and becomes a real dataset you have to clean first.</p>
+      </section>
+
+      <!-- ============ M3..M10 ROADMAP CHAPTERS ============ -->
+      <section class="page" id="m3-intro" data-crumb="3 · DataFrames.jl" data-chap="m3">
+        <div class="kick">Module 3</div><h2>DataFrames.jl</h2>
+        <p class="lead">Load, clean, and reshape any tabular dataset idiomatically — the <code class="inl">src =&gt; fun =&gt; dest</code> grammar and split-apply-combine.</p>
+        <ul class="roadmap">
+          <li><b>3.1</b> Constructing frames; <code>CSV.read</code>/<code>write</code></li>
+          <li><b>3.2</b> Indexing: <code>!</code> (no-copy) vs <code>:</code> (copy)</li>
+          <li><b>3.3</b> The <code>=&gt;</code> mini-language; <code>select</code>/<code>transform</code>/<code>combine</code></li>
+          <li><b>3.4</b> <code>groupby</code> split-apply-combine</li>
+          <li><b>3.5</b> Joins, reshaping, missing &amp; categorical data</li>
+        </ul>
+      </section>
+      <section class="page" id="m4-intro" data-crumb="4 · EDA &amp; Visualization" data-chap="m4">
+        <div class="kick">Module 4</div><h2>EDA &amp; Visualization</h2>
+        <p class="lead">Read a dataset like a competitor: descriptive stats, correlation as a normalized dot product, and the grammar of graphics.</p>
+        <ul class="roadmap">
+          <li><b>4.1</b> Descriptive statistics &amp; <code>describe</code></li>
+          <li><b>4.2</b> Correlation = cosine of centered vectors (the M2 payoff)</li>
+          <li><b>4.3</b> Distributions, scatter, box, violin</li>
+          <li><b>4.4</b> AlgebraOfGraphics &amp; the Makie figure/axis model</li>
+          <li><b>4.5</b> Reading data like a competitor: skew, missingness, leakage</li>
+        </ul>
+      </section>
+      <section class="page" id="m5-intro" data-crumb="5 · Linear Algebra II" data-chap="m5">
+        <div class="kick">Module 5 · the boss fight</div><h2>Linear Algebra II + Least Squares</h2>
+        <p class="lead">Rank, column space, projection, and the normal equations — where gradient descent finally gets its linear-algebra explanation.</p>
+        <ul class="roadmap">
+          <li><b>5.1</b> Linear independence &amp; rank (→ multicollinearity)</li>
+          <li><b>5.2</b> Column space &amp; projection</li>
+          <li><b>5.3</b> Least squares \(\min\lVert y-X\beta\rVert^2\) &amp; the normal equations</li>
+          <li><b>5.4</b> Two derivations meet: calculus vs projection</li>
+          <li><b>5.5</b> Why <code>X \ y</code> beats forming <code>X'X</code>; conditioning</li>
+        </ul>
+      </section>
+      <section class="page" id="m6-intro" data-crumb="6 · MLJ.jl I" data-chap="m6">
+        <div class="kick">Module 6</div><h2>MLJ.jl — the unified interface</h2>
+        <p class="lead">Models vs machines, scientific types, and cross-validation done right — the single most important competitor skill.</p>
+        <ul class="roadmap">
+          <li><b>6.1</b> The MLJ mental model: models &amp; machines</li>
+          <li><b>6.2</b> Scientific types: <code>scitype</code>, <code>coerce</code>, <code>schema</code></li>
+          <li><b>6.3</b> <code>fit!</code>/<code>predict</code>; <code>partition</code></li>
+          <li><b>6.4</b> Resampling &amp; CV; <code>evaluate</code>, measures, leakage</li>
+        </ul>
+      </section>
+      <section class="page" id="m7-intro" data-crumb="7 · Regularized Models" data-chap="m7">
+        <div class="kick">Module 7</div><h2>Linear &amp; Regularized Models</h2>
+        <p class="lead">Ridge, Lasso, ElasticNet — tied straight back to Module 5 norms: L2 shrinks, L1 zeros.</p>
+        <ul class="roadmap">
+          <li><b>7.1</b> Linear &amp; logistic regression; the intercept</li>
+          <li><b>7.2</b> Ridge (L2), Lasso (L1), ElasticNet</li>
+          <li><b>7.3</b> Standardize before regularizing; choosing λ by CV</li>
+        </ul>
+      </section>
+      <section class="page" id="m8-intro" data-crumb="8 · Trees &amp; Boosting" data-chap="m8">
+        <div class="kick">Module 8</div><h2>Trees &amp; Gradient Boosting</h2>
+        <p class="lead">EvoTrees, XGBoost, LightGBM behind one MLJ interface — the model family that carries tabular Kaggle. First real submission.</p>
+        <ul class="roadmap">
+          <li><b>8.1</b> Trees → ensembles: bagging vs boosting</li>
+          <li><b>8.2</b> Gradient boosting fits the negative gradient of the loss</li>
+          <li><b>8.3</b> Tuning with <code>TunedModel</code> &amp; <code>range</code>; early stopping</li>
+          <li><b>8.4</b> Feature importance &amp; gain</li>
+        </ul>
+      </section>
+      <section class="page" id="m9-intro" data-crumb="9 · Pipelines &amp; Ensembling" data-chap="m9">
+        <div class="kick">Module 9</div><h2>Pipelines, Validation &amp; Ensembling</h2>
+        <p class="lead">Leakage-free pipelines, target transforms, trusting CV over the leaderboard, and stacking.</p>
+        <ul class="roadmap">
+          <li><b>9.1</b> MLJ <code>Pipeline</code> composition; fit on train folds only</li>
+          <li><b>9.2</b> <code>TransformedTargetModel</code> for skewed targets</li>
+          <li><b>9.3</b> Validation strategy; public vs private leaderboard</li>
+          <li><b>9.4</b> Blending &amp; <code>Stack</code>; selecting the final submission by CV</li>
+        </ul>
+      </section>
+      <section class="page" id="m10-intro" data-crumb="10 · Capstone" data-chap="m10">
+        <div class="kick">Module 10 · the arena</div><h2>Capstone — the live competition</h2>
+        <p class="lead">The full loop end to end: EDA → features → CV harness → boosting + linear → tuning → ensemble → CV-selected submission → writeup. This earns the certificate.</p>
+        <ul class="roadmap">
+          <li><b>10.1</b> Pull the data; build the CV harness first</li>
+          <li><b>10.2</b> Feature engineering &amp; the model bake-off</li>
+          <li><b>10.3</b> Ensemble, select by CV, submit</li>
+          <li><b>10.4</b> The one-page writeup &amp; reproducible pipeline</li>
+        </ul>
+        <div class="block def"><div class="bh">The credential</div>A CV-selected final submission on the board plus a writeup of your validation strategy, features, models, and standing earns <em>Julia ML Competitor — Certified Practitioner.</em></div>
+      </section>
+
+      <!-- ============ APPENDIX · MATH IN ACTION ============ -->
+      <section class="page" id="apx-intro" data-crumb="Appendix · Math in Action" data-chap="apx">
+        <div class="kick">Appendix</div>
+        <h2>Discrete Math, in Action</h2>
+        <p class="lead">A refresher of discrete mathematics — logic, counting, sequences, sets, functions, graphs — shown where each idea already lives inside this course.</p>
+        <p>You don't need this as abstract homework; you need to recognize it as a boolean mask, a hyperparameter grid, a learning-rate schedule, a one-hot encoding, or a decision tree. Each section is a quick definition, then the idea <em>in action</em> in Julia, then a reading question.</p>
+        <div class="block note"><div class="bh">How to read it</div>Blue = the definition. Green = the idea in action in Julia/ML. Purple = a reading question. Skim the green blocks first for the "oh, that's what that is" hit.</div>
+      </section>
+
+      <section class="page" id="apx-lg-pred" data-crumb="A.1 · Predicates &amp; Masks" data-chap="apx">
+        <div class="kick">Logic · A.1</div>
+        <h2>Predicates are boolean masks</h2>
+        <div class="block def"><div class="bh">Definition · Predicate</div>A <strong>predicate</strong> \(P(x)\) is a statement about \(x\) that is true or false. Over a collection it produces a vector of truth values.</div>
+        <p>In Julia a predicate broadcast over a vector <em>is</em> a boolean mask — the thing DataFrames filtering and outlier detection are built on.</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>price = [<span class="n">180.0</span>, <span class="n">240.0</span>, <span class="n">900.0</span>, <span class="n">160.0</span>]
+mask  = price .&gt; <span class="n">500</span>          <span class="c"># Bool[0,0,1,0] — the predicate P(x): x &gt; 500</span>
+price[mask]                  <span class="c"># [900.0] — keep where true (M3 filtering)</span>
+<span class="f">count</span>(mask)                 <span class="c"># 1 — how many rows satisfy P</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>Every <code class="inl">filter</code>/<code class="inl">subset</code> in DataFrames and every outlier rule ("flag price above the 99th percentile") is a predicate evaluated to a mask. Logic <em>is</em> your row-selection engine.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>Write the mask for "area is missing OR price exceeds 500," then count how many rows satisfy it.</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-lg-quant" data-crumb="A.2 · Quantifiers" data-chap="apx">
+        <div class="kick">Logic · A.2</div>
+        <h2>Quantifiers are <code class="inl">all</code> and <code class="inl">any</code></h2>
+        <div class="block def"><div class="bh">Definition · ∀ and ∃</div>The universal \(\forall x\,P(x)\) ("for all") and existential \(\exists x\,P(x)\) ("there exists") collapse a predicate over a whole set to a single truth value.</div>
+        <div class="eq">\[ \forall x\in S:\,P(x) \;\equiv\; \texttt{all}(P, S), \qquad \exists x\in S:\,P(x) \;\equiv\; \texttt{any}(P, S) \]</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="f">all</span>(x -&gt; x &gt; <span class="n">0</span>, price)      <span class="c"># ∀: are ALL prices positive?  → true</span>
+<span class="f">any</span>(<span class="f">ismissing</span>, col)        <span class="c"># ∃: is there ANY missing value? → data-quality gate</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>A data-validation check is a quantifier: "<code class="inl">all</code> targets non-negative before a log-transform," "<code class="inl">any</code> column fully missing → drop it." De&nbsp;Morgan in code: <code class="inl">!any(f, x) == all(!f, x)</code> — negating a search flips the quantifier, exactly the law you'd prove on paper.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>Rewrite <code class="inl">!all(x -&gt; x &gt;= 0, v)</code> as an <code class="inl">any</code> expression using De&nbsp;Morgan.</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-lg-imp" data-crumb="A.3 · Implication" data-chap="apx">
+        <div class="kick">Logic · A.3</div>
+        <h2>Implication &amp; short-circuit</h2>
+        <div class="block def"><div class="bh">Definition · Implication</div>\(p \Rightarrow q\) is false only when \(p\) is true and \(q\) is false. Its contrapositive \(\lnot q \Rightarrow \lnot p\) is logically equivalent.</div>
+        <table class="tt">
+          <tr><th>\(p\)</th><th>\(q\)</th><th>\(p\Rightarrow q\)</th></tr>
+          <tr><td>T</td><td>T</td><td>T</td></tr>
+          <tr><td>T</td><td>F</td><td>F</td></tr>
+          <tr><td>F</td><td>T</td><td>T</td></tr>
+          <tr><td>F</td><td>F</td><td>T</td></tr>
+        </table>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>isvalid &amp;&amp; <span class="f">fit!</span>(mach)         <span class="c"># "if valid, fit" — short-circuit && is p ⇒ run q</span>
+<span class="f">ismissing</span>(x) || x &gt; <span class="n">0</span>        <span class="c"># || skips the 2nd test when the 1st is true</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>Short-circuit <code class="inl">&amp;&amp;</code> / <code class="inl">||</code> are implications you run. The <strong>contrapositive</strong> is your debugging move: instead of "good data ⇒ CV passes," check "CV failed ⇒ something upstream is bad" and trace backwards. Same truth, easier to test.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>State the contrapositive of "no leakage ⇒ CV tracks the leaderboard." Which version is easier to check after a bad submission?</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-lg-induction" data-crumb="A.4 · Induction &amp; Loops" data-chap="apx">
+        <div class="kick">Logic · A.4</div>
+        <h2>Induction proves your loops</h2>
+        <div class="block def"><div class="bh">Definition · Proof by induction</div>To prove \(P(n)\) for all \(n\): show the <strong>base case</strong> \(P(1)\), then the <strong>inductive step</strong> \(P(k)\Rightarrow P(k+1)\). A loop invariant is the same idea: true before the loop, preserved each pass.</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="k">function</span> <span class="f">runsum</span>(v)
+    s = <span class="f">zero</span>(<span class="f">eltype</span>(v))     <span class="c"># INVARIANT: s holds the sum of v[1:i-1]</span>
+    <span class="k">for</span> i <span class="k">in</span> <span class="f">eachindex</span>(v)
+        s += v[i]              <span class="c"># step: invariant for i-1 ⇒ holds for i</span>
+    <span class="k">end</span>
+    s                          <span class="c"># at exit i = n+1, so s = Σ v  ✓</span>
+<span class="k">end</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>This is the M1 type-stable reducer, justified. The invariant "<code class="inl">s</code> equals the partial sum so far" is the inductive hypothesis; the base case is the <code class="inl">zero</code> seed. Induction is also <em>why</em> boosting (M8) provably reduces training loss — each round corrects the last.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>State the loop invariant for a function computing \(n!\) by repeated multiplication, and its base case.</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-ct-sumprod" data-crumb="B.1 · Sum &amp; Product" data-chap="apx">
+        <div class="kick">Counting · B.1</div>
+        <h2>The product principle is your grid size</h2>
+        <div class="block def"><div class="bh">Definition · Sum &amp; product principles</div>If choices are <em>independent</em>, total outcomes <strong>multiply</strong>: \(|A\times B| = |A|\cdot|B|\). If <em>mutually exclusive</em>, they <strong>add</strong>: \(|A\cup B| = |A|+|B|\) (disjoint).</div>
+        <p>Every grid search in Module 8 is the product principle. A grid over depth, learning rate, and rounds has size</p>
+        <div class="eq">\[ |\text{grid}| \;=\; |\text{depths}|\times|\text{etas}|\times|\text{rounds}| \]</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>depths = [<span class="n">3</span>, <span class="n">5</span>, <span class="n">7</span>]; etas = [<span class="n">0.01</span>, <span class="n">0.1</span>]; rounds = [<span class="n">200</span>, <span class="n">500</span>, <span class="n">1000</span>]
+<span class="f">length</span>(depths)*<span class="f">length</span>(etas)*<span class="f">length</span>(rounds)   <span class="c"># 18 models to train</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>This is why grid search explodes: add one more 5-value knob and 18 models become 90. The product principle is the argument for <em>random</em> search once you have many hyperparameters — you can't afford the full Cartesian product.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>Add a 4th hyperparameter with 4 settings. How many total fits, and how many with 5-fold CV?</li></ol></div>
+
+        <div class="block ch" data-answer-hash="1989936939">
+          <div class="bh">PE 5 · Smallest multiple</div>
+          <p>What is the smallest positive number evenly divisible by all of the integers from 1 to 20? This is \(\operatorname{lcm}(1,2,\dots,20)\) — in Julia, <code class="inl">reduce(lcm, 1:20)</code> (the product principle's number-theory cousin).</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="your answer" aria-label="PE5 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+      </section>
+
+      <section class="page" id="apx-ct-permcomb" data-crumb="B.2 · Permutations &amp; Combinations" data-chap="apx">
+        <div class="kick">Counting · B.2</div>
+        <h2>Combinations count feature subsets &amp; folds</h2>
+        <div class="block def"><div class="bh">Definition · Permutations &amp; combinations</div>Ordered: \(P(n,k)=\dfrac{n!}{(n-k)!}\). Unordered: \(\dbinom{n}{k}=\dfrac{n!}{k!\,(n-k)!}\).</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="f">binomial</span>(<span class="n">20</span>, <span class="n">3</span>)              <span class="c"># 1140 — ways to pick 3 of 20 features</span>
+<span class="f">factorial</span>(<span class="n">5</span>)               <span class="c"># 120 — orderings of a 5-step pipeline</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>Two bites: (1) <strong>feature selection</strong> — there are \(2^p\) possible subsets, so you can't try them all; that's why regularization (M7) selects instead of brute force. (2) <strong>Cross-validation</strong> — \(k\)-fold partitions the data many ways; the count is why CV is more stable than one split.</div>
+        <div class="block note"><div class="bh">The explosion is the point</div>\(2^{20}\approx\) a million feature subsets. Discrete math says "you cannot search this," which is exactly why ML leans on optimization and regularization, not enumeration.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>How many subsets of features exist for \(p=10\) columns? Why does that rule out exhaustive feature search?</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-ct-pie" data-crumb="B.3 · Inclusion–Exclusion" data-chap="apx">
+        <div class="kick">Counting · B.3</div>
+        <h2>Inclusion–Exclusion &amp; overlapping flags</h2>
+        <div class="block def"><div class="bh">Definition · PIE (two sets)</div>\[ |A\cup B| = |A| + |B| - |A\cap B| \]Subtract the double-counted overlap. For three sets, add back the triple intersection.</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>mA = <span class="f">ismissing</span>.(df.area); mB = <span class="f">ismissing</span>.(df.price)
+nA = <span class="f">count</span>(mA); nB = <span class="f">count</span>(mB); nAB = <span class="f">count</span>(mA .&amp; mB)
+any_missing = nA + nB - nAB              <span class="c"># PIE — no double counting</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>Counting "rows with any missing value" by adding per-column counts <em>over-counts</em> rows missing in several columns. PIE is the correction — the same logic dedupes overlapping binary feature flags before you report coverage.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>120 rows miss area, 80 miss price, 30 miss both. How many miss at least one?</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-ct-prob" data-crumb="B.4 · Probability" data-chap="apx">
+        <div class="kick">Counting · B.4</div>
+        <h2>Probability — priors, log-loss, stratified CV</h2>
+        <div class="block def"><div class="bh">Definition · Probability &amp; conditional</div>\(P(E)=\dfrac{|\text{favorable}|}{|\text{total}|}\) for equally likely outcomes; \(P(A\mid B)=\dfrac{P(A\cap B)}{P(B)}\).</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>y = [<span class="n">1</span>,<span class="n">0</span>,<span class="n">0</span>,<span class="n">0</span>,<span class="n">1</span>,<span class="n">0</span>,<span class="n">0</span>,<span class="n">1</span>]
+prior_pos = <span class="f">count</span>(==(<span class="n">1</span>), y) / <span class="f">length</span>(y)   <span class="c"># 0.375 — class prior P(y=1)</span></code></pre>
+        <p>A classifier outputs probabilities, and log loss — the metric that scores them — is pure probability:</p>
+        <div class="eq">\[ \text{logloss} = -\frac{1}{n}\sum_{i=1}^{n}\Big[y_i\log \hat p_i + (1-y_i)\log(1-\hat p_i)\Big] \]</div>
+        <div class="block ex"><div class="bh">In action</div>The class prior decides your metric and split: a skewed prior makes accuracy useless and demands <strong>StratifiedCV</strong> (M6) so each fold preserves \(P(y=1)\). Conditional probability is the spine of why leakage — conditioning on the future — inflates scores.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>Why does a 5%-positive target make plain accuracy a bad metric, and which CV scheme fixes the fold imbalance?</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-sq-recur" data-crumb="C.1 · Sequences &amp; Recurrences" data-chap="apx">
+        <div class="kick">Sequences · C.1</div>
+        <h2>Gradient descent is a recurrence</h2>
+        <div class="block def"><div class="bh">Definition · Recurrence</div>A sequence defined by a rule from earlier terms: \(a_{n+1}=f(a_n)\), with a seed \(a_0\). Whether it converges or blows up is set by \(f\).</div>
+        <p>Gradient descent <em>is</em> a recurrence on the parameter vector:</p>
+        <div class="eq">\[ \theta_{n+1} \;=\; \theta_n - \eta\,\nabla L(\theta_n) \]</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>θ = θ0
+<span class="k">for</span> n <span class="k">in</span> <span class="n">1</span>:nsteps
+    θ = θ .- η .* <span class="f">∇L</span>(θ)        <span class="c"># aₙ₊₁ = f(aₙ): one recurrence step</span>
+<span class="k">end</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>Convergence is a statement about the <em>sequence</em> \(\theta_n\): too large an \(\eta\) makes it diverge, small enough makes it contract toward the minimum. Boosting (M8) is the same shape — each round adds a correction term to a running model sequence.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>Write gradient descent as \(a_{n+1}=f(a_n)\). What property of \(\eta\) keeps the sequence from diverging?</li></ol></div>
+
+        <div class="block ch" data-answer-hash="2972312085">
+          <div class="bh">PE 2 · Even Fibonacci sum</div>
+          <p>The Fibonacci recurrence \(F_{n+1}=F_n+F_{n-1}\) starts 1, 2, 3, 5, 8, 13, …. Find the sum of the even-valued terms that do not exceed four million. Solve it as a loop on the recurrence, then check:</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="your answer" aria-label="PE2 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+
+        <div class="block ch" data-answer-hash="1159844442">
+          <div class="bh">PE 25 · First Fibonacci with 1000 digits</div>
+          <p>With \(F_1=F_2=1\), what is the <em>index</em> of the first term that contains 1000 digits? Iterate the recurrence with <code class="inl">BigInt</code> values and stop when <code class="inl">ndigits</code> hits 1000.</p>
+          <div class="euler"><input type="text" inputmode="numeric" placeholder="term index" aria-label="PE25 answer"><button onclick="checkEuler(this)">Check</button><span class="fb"></span><span class="tries"></span></div>
+        </div>
+      </section>
+
+      <section class="page" id="apx-sq-geom" data-crumb="C.2 · Geometric Sequences" data-chap="apx">
+        <div class="kick">Sequences · C.2</div>
+        <h2>Geometric sequences = learning-rate decay</h2>
+        <div class="block def"><div class="bh">Definition · Geometric sequence</div>Each term is the previous times a constant ratio \(r\): \(a_n = a_0\,r^{\,n}\). Partial sum \(\sum_{k=0}^{n-1} a_0 r^k = a_0\dfrac{1-r^n}{1-r}\).</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>η0 = <span class="n">0.1</span>; r = <span class="n">0.9</span>
+schedule = [η0 * r^n <span class="k">for</span> n <span class="k">in</span> <span class="n">0</span>:<span class="n">9</span>]   <span class="c"># decaying LR: 0.1, 0.09, 0.081, …</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>An exponential learning-rate schedule is literally a geometric sequence with ratio \(r&lt;1\). Because \(r^n\to 0\), steps shrink and the optimizer settles. The closed-form partial sum tells you the <em>total</em> distance still left to travel — finite when \(r&lt;1\), which is why decaying rates converge.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>With \(\eta_0=0.1,\ r=0.5\), what is \(\eta_5\)? Does the infinite sum of steps converge, and to what?</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-sq-growth" data-crumb="C.3 · Growth &amp; Big-O" data-chap="apx">
+        <div class="kick">Sequences · C.3</div>
+        <h2>Rates of growth = training cost</h2>
+        <div class="block def"><div class="bh">Definition · Order of growth</div>How a cost scales with \(n\): constant, logarithmic, linear, \(n\log n\), polynomial, exponential — slowest to fastest growing.</div>
+        <table class="tt">
+          <tr><th>Growth</th><th>Shows up as</th></tr>
+          <tr><td>\(O(n)\)</td><td>one pass over \(n\) rows — your M1 reducer, a broadcast</td></tr>
+          <tr><td>\(O(np)\)</td><td>a dot product per row of an \(n\times p\) matrix → \(X\beta\)</td></tr>
+          <tr><td>\(O(n\log n)\)</td><td>sorting a column; split-finding in a boosted tree</td></tr>
+          <tr><td>\(O(2^p)\)</td><td>all feature subsets — the wall from B.2</td></tr>
+        </table>
+        <div class="block ex"><div class="bh">In action</div>Growth rates are why the column-major loop order from M1 matters at scale, why \(X\beta\) costs \(O(np)\), and why exhaustive feature search (\(2^p\)) is off the table. You reason about training time like a sequence's order of growth.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>Rank by cost for large \(n\): a broadcast over \(n\) rows, sorting \(n\) rows, trying all \(2^p\) subsets.</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-sf-sets" data-crumb="D.1 · Sets &amp; Leakage" data-chap="apx">
+        <div class="kick">Structures · D.1</div>
+        <h2>Sets — indices, categories, leakage checks</h2>
+        <div class="block def"><div class="bh">Definition · Set operations</div>Union \(A\cup B\), intersection \(A\cap B\), difference \(A\setminus B\). A set has no duplicates and no order.</div>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>train_idx = <span class="t">Set</span>(<span class="n">1</span>:<span class="n">800</span>); test_idx = <span class="t">Set</span>(<span class="n">801</span>:<span class="n">1000</span>)
+<span class="f">intersect</span>(train_idx, test_idx)        <span class="c"># Set() — MUST be empty, or you have leakage</span>
+<span class="f">unique</span>(df.city)                       <span class="c"># the SET of categories → one-hot columns</span></code></pre>
+        <div class="block ex"><div class="bh">In action</div>A train/test split is a <strong>partition</strong>: two disjoint sets whose union is everything. The leakage check is one line — <code class="inl">isempty(intersect(train, test))</code>. The distinct values of a categorical column are a set whose <em>size</em> is how many one-hot columns it becomes.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>Express "no row is in both train and test" as a set statement. What does a non-empty intersection imply for your CV score?</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-sf-funcs" data-crumb="D.2 · Functions &amp; Encodings" data-chap="apx">
+        <div class="kick">Structures · D.2</div>
+        <h2>Encodings are functions: injective, surjective, bijective</h2>
+        <div class="block def"><div class="bh">Definition · Function types</div><strong>Injective</strong> (one-to-one): distinct inputs → distinct outputs. <strong>Surjective</strong> (onto): every output hit. <strong>Bijective</strong>: both → invertible.</div>
+        <table class="tt">
+          <tr><th>Encoding</th><th>As a function</th><th>Consequence</th></tr>
+          <tr><td>Label encoding</td><td>injective categories → integers</td><td>Invertible, but imposes a fake order</td></tr>
+          <tr><td>One-hot</td><td>injective into \(\{0,1\}^k\)</td><td>No fake order; \(k\) new columns</td></tr>
+          <tr><td>Hashing trick</td><td><em>not</em> injective (collisions)</td><td>Fixed width, but two categories can collide</td></tr>
+        </table>
+        <div class="block ex"><div class="bh">In action</div>Whether an encoding is invertible <em>is</em> whether the function is injective. The hashing trick gives up injectivity (collisions) to bound the column count — a discrete-math tradeoff you choose on purpose. Bijection = you can decode predictions back to category names.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>Why is one-hot injective but the hashing trick not, and what practical risk does the non-injective case carry?</li></ol></div>
+      </section>
+
+      <section class="page" id="apx-sf-graphs" data-crumb="D.3 · Graphs" data-chap="apx">
+        <div class="kick">Structures · D.3</div>
+        <h2>Graphs — trees, computation, pipelines</h2>
+        <div class="block def"><div class="bh">Definition · Graph &amp; tree</div>A <strong>graph</strong> is vertices joined by edges. A <strong>tree</strong> is a connected graph with no cycles (\(n\) vertices, \(n-1\) edges). A <strong>DAG</strong> is a directed graph with no cycles.</div>
+        <table class="tt">
+          <tr><th>Object</th><th>Graph structure</th></tr>
+          <tr><td>Decision tree (M8)</td><td>A rooted tree; each internal node a split, each leaf a prediction</td></tr>
+          <tr><td>Model computation</td><td>A DAG of operations — the "computation graph" gradients flow back through</td></tr>
+          <tr><td>MLJ pipeline (M9)</td><td>A DAG of stages; data flows along edges, fit order is a topological sort</td></tr>
+        </table>
+        <div class="block ex"><div class="bh">In action</div>A gradient-boosted model is an <em>ensemble of trees</em> — a forest of these graphs. A leakage-free pipeline is a DAG where preprocessing nodes must precede the model node; respecting that edge order (fit transforms on train folds only) is what keeps CV honest.</div>
+        <div class="block rq"><div class="bh">Reading Question</div><ol><li>A decision tree has 1 root and binary-splits to 16 leaves. Why is it a tree, not a general graph? How many edges for \(n\) nodes?</li></ol></div>
+      </section>
+
+      <!-- pager -->
+      <div class="pager">
+        <a id="pagPrev" onclick="rel(-1)"><span class="lab">Previous</span><span id="pagPrevT">—</span></a>
+        <a id="pagNext" class="r" onclick="rel(1)"><span class="lab">Next</span><span id="pagNextT">—</span></a>
+      </div>
+      <div class="ftn">Julia ML Competitor · an open course · built in the PreTeXt reading style · MathJax typeset</div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  // ---- reading order + chapter structure ----
+  const chapters = [
+    {id:'fm',  label:'Front Matter', badge:'', secs:[['front','Title &amp; How to Use']]},
+    {id:'m1',  label:'1 · Idiomatic Julia', badge:'now', secs:[
+      ['m1-intro','Overview'],['m1-repl','1.1 The REPL'],['m1-types','1.2 Types'],
+      ['m1-dispatch','1.3 Multiple Dispatch'],['m1-functions','1.4 Functions &amp; !'],
+      ['m1-arrays','1.5 Arrays'],['m1-broadcast','1.6 Broadcasting'],
+      ['m1-views','1.7 Mutation &amp; Views'],['m1-stability','1.8 Type Stability'],
+      ['m1-project','1.9 Project Hygiene'],['m1-practice','1.10 Practice']]},
+    {id:'m2',  label:'2 · Linear Algebra I', badge:'', secs:[
+      ['m2-intro','Overview'],['m2-vectors','2.1 Vectors, Addition &amp; Scaling'],
+      ['m2-span','2.2 Linear Combinations &amp; Span'],['m2-dot','2.3 The Dot Product'],
+      ['m2-norms','2.4 Norms'],['m2-matrices','2.5 Matrices'],
+      ['m2-transpose','2.6 Transpose &amp; Identity'],['m2-matvec','2.7 Xβ — the Matrix Products'],
+      ['m2-stdlib','2.8 LinearAlgebra &amp; Column-Major'],['m2-practice','2.9 Practice']]},
+    {id:'m3',  label:'3 · DataFrames.jl', badge:'', secs:[['m3-intro','Overview']]},
+    {id:'m4',  label:'4 · EDA &amp; Visualization', badge:'', secs:[['m4-intro','Overview']]},
+    {id:'m5',  label:'5 · Linear Algebra II', badge:'', secs:[['m5-intro','Overview']]},
+    {id:'m6',  label:'6 · MLJ.jl I', badge:'', secs:[['m6-intro','Overview']]},
+    {id:'m7',  label:'7 · Regularized Models', badge:'', secs:[['m7-intro','Overview']]},
+    {id:'m8',  label:'8 · Trees &amp; Boosting', badge:'', secs:[['m8-intro','Overview']]},
+    {id:'m9',  label:'9 · Pipelines &amp; Ensembling', badge:'', secs:[['m9-intro','Overview']]},
+    {id:'m10', label:'10 · Capstone', badge:'cert', secs:[['m10-intro','Overview']]},
+    {id:'apx', label:'Appendix · Math in Action', badge:'math', secs:[
+      ['apx-intro','Overview'],
+      ['apx-lg-pred','A.1 Predicates &amp; Masks'],['apx-lg-quant','A.2 Quantifiers'],
+      ['apx-lg-imp','A.3 Implication'],['apx-lg-induction','A.4 Induction &amp; Loops'],
+      ['apx-ct-sumprod','B.1 Sum &amp; Product'],['apx-ct-permcomb','B.2 Permutations &amp; Combinations'],
+      ['apx-ct-pie','B.3 Inclusion–Exclusion'],['apx-ct-prob','B.4 Probability'],
+      ['apx-sq-recur','C.1 Sequences &amp; Recurrences'],['apx-sq-geom','C.2 Geometric Sequences'],
+      ['apx-sq-growth','C.3 Growth &amp; Big-O'],
+      ['apx-sf-sets','D.1 Sets &amp; Leakage'],['apx-sf-funcs','D.2 Functions &amp; Encodings'],
+      ['apx-sf-graphs','D.3 Graphs']]},
+  ];
+  const order = []; chapters.forEach(c=>c.secs.forEach(s=>order.push(s[0])));
+  const chapOf = {}; chapters.forEach(c=>c.secs.forEach(s=>chapOf[s[0]]=c.id));
+  const firstOf = {}; chapters.forEach(c=>firstOf[c.id]=c.secs[0][0]);
+
+  // ---- build sidebar ----
+  const toc = document.getElementById('toc');
+  chapters.forEach(c=>{
+    const div = document.createElement('div'); div.className='chap'; div.dataset.chap=c.id;
+    const badge = c.badge ? `<span class="badge">${c.badge}</span>` : '';
+    div.innerHTML = `<button onclick="toggleChap('${c.id}')"><span class="tw">▶</span>`+
+                    `<span class="lbl">${c.label}</span>${badge}</button>`+
+                    `<ul class="seclist">`+
+                    c.secs.map(s=>`<li><a data-target="${s[0]}" onclick="show('${s[0]}')">${s[1]}</a></li>`).join('')+
+                    `</ul>`;
+    toc.appendChild(div);
+  });
+
+  function toggleChap(cid){
+    document.querySelector(`.chap[data-chap="${cid}"]`).classList.toggle('open');
+  }
+
+  const titleOf = id => { const p=document.getElementById(id); return p?p.dataset.crumb:''; };
+
+  function show(id){
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(p=>p.classList.toggle('active', p.id===id));
+    // stop any narration when leaving a page
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    if(typeof setListen==='function') setListen('idle');
+    document.querySelectorAll('.speaking').forEach(e=>e.classList.remove('speaking'));
+    // sidebar state
+    document.querySelectorAll('.seclist a').forEach(a=>a.classList.toggle('cur', a.dataset.target===id));
+    const cid = chapOf[id];
+    document.querySelectorAll('.chap').forEach(ch=>{
+      if(ch.dataset.chap===cid) ch.classList.add('open');
+    });
+    // crumbs + pager
+    document.getElementById('crumbs').innerHTML = titleOf(id);
+    const k = order.indexOf(id);
+    const prevId = k>0?order[k-1]:null, nextId = k<order.length-1?order[k+1]:null;
+    document.getElementById('prevTop').disabled = !prevId;
+    document.getElementById('nextTop').disabled = !nextId;
+    document.getElementById('pagPrevT').innerHTML = prevId?titleOf(prevId):'Start of book';
+    document.getElementById('pagNextT').innerHTML = nextId?titleOf(nextId):'End of book';
+    // math + scroll
+    const main = document.getElementById('main'); if(main) main.scrollTop=0;
+    if(window.MathJax && MathJax.typesetPromise){ MathJax.typesetPromise([document.getElementById(id)]); }
+    document.body.classList.remove('navopen');
+    window._cur = id;
+  }
+  function rel(d){
+    const k = order.indexOf(window._cur||'front');
+    const j = Math.min(order.length-1, Math.max(0, k+d));
+    show(order[j]);
+  }
+  function goUp(){ show(firstOf[chapOf[window._cur||'front']]); }
+
+  // ---- Project Euler answer checker (answers stored as a hash, never plaintext) ----
+  function eulerHash(s){
+    s = String(s).replace(/[,\s]/g,'').toLowerCase();
+    let h = 2166136261 >>> 0;
+    for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+  }
+  function checkEuler(btn){
+    const box = btn.closest('.block.ch');
+    const inp = box.querySelector('input');
+    const fb  = box.querySelector('.fb');
+    const want = (Number(box.dataset.answerHash) >>> 0);
+    if(inp.value.replace(/[,\s]/g,'')===''){ fb.className='fb no'; fb.textContent='enter a value'; return; }
+    if(eulerHash(inp.value)===want){
+      fb.className='fb ok'; fb.textContent='✓ correct — locked in';
+      inp.disabled=true; btn.disabled=true;
+    } else {
+      fb.className='fb no'; fb.textContent='✗ not yet — recheck your code';
+      const t = box.querySelector('.tries'); if(t){ t._n=(t._n||0)+1; t.textContent='· attempts: '+t._n; }
+    }
+  }
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && e.target.matches && e.target.matches('.euler input')){
+      const b = e.target.closest('.euler').querySelector('button'); if(b) b.click();
+    }
+  });
+
+  // ---- audiobook: narrate the current section with the browser's own voices ----
+  const synth = window.speechSynthesis;
+  const listenBtn = document.getElementById('listenBtn');
+  let ttsState = 'idle'; // idle | playing | paused
+
+  function setListen(s){
+    ttsState = s;
+    listenBtn.textContent = s==='playing' ? '❚❚ Pause' : s==='paused' ? '▶ Resume' : '🔊 Listen';
+    listenBtn.classList.toggle('on', s!=='idle');
+  }
+  function cleanText(node){
+    const c = node.cloneNode(true);
+    c.querySelectorAll('mjx-container,.MathJax,svg,.euler,button,.qspeak').forEach(m=>m.remove());
+    return (c.innerText || c.textContent || '').replace(/\s+/g,' ').trim();
+  }
+  function collectReadable(pageEl){
+    const out = [], skip = new Set(['PRE','TABLE']);
+    pageEl.querySelectorAll(':scope > *').forEach(el=>{
+      if(skip.has(el.tagName)) return;
+      if(el.classList.contains('eq') || el.classList.contains('pager')) return;
+      const t = cleanText(el);
+      if(t.length > 1) out.push([el, t]);
+    });
+    return out;
+  }
+  function speakItems(items){
+    synth.cancel();
+    if(!items.length) return;
+    items.forEach(([el,text], i)=>{
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.98;
+      u.onstart = ()=>{ el.classList.add('speaking'); el.scrollIntoView({block:'center',behavior:'smooth'}); };
+      u.onend   = ()=>{ el.classList.remove('speaking'); if(i===items.length-1) setListen('idle'); };
+      synth.speak(u);
+    });
+    setListen('playing');
+  }
+  listenBtn.addEventListener('click', ()=>{
+    if(!('speechSynthesis' in window)){ alert('This browser has no speech synthesis. Try Chrome, Edge, or Safari.'); return; }
+    if(ttsState==='idle'){ speakItems(collectReadable(document.querySelector('.page.active'))); }
+    else if(ttsState==='playing'){ synth.pause(); setListen('paused'); }
+    else if(ttsState==='paused'){ synth.resume(); setListen('playing'); }
+  });
+
+  // ---- per-question 🔊 buttons on Reading Questions and Project Euler blocks ----
+  document.querySelectorAll('.block.rq, .block.ch').forEach(b=>{
+    const bh = b.querySelector('.bh'); if(!bh) return;
+    const btn = document.createElement('button');
+    btn.className = 'qspeak'; btn.type = 'button'; btn.textContent = '🔊';
+    btn.title = 'Read this question aloud';
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      if(!('speechSynthesis' in window)) return;
+      synth.cancel(); setListen('idle');
+      const u = new SpeechSynthesisUtterance(cleanText(b));
+      u.rate = 0.98;
+      synth.speak(u);
+    });
+    bh.appendChild(btn);
+  });
+
+  // dark/light toggle (defaults dark to match your other materials)
+  document.getElementById('darkBtn').addEventListener('click', ()=>{
+    document.body.classList.toggle('dark');
+  });
+
+  // open chapter 1, start at front
+  document.querySelector('.chap[data-chap="m1"]').classList.add('open');
+  show('front');
+</script>
+</body>
+</html>
