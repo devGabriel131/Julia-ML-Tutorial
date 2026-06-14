@@ -282,6 +282,29 @@
 <span class="f">area</span>(<span class="t">Circle</span>(<span class="n">2.0</span>))             <span class="c"># 12.566…</span></code></pre>
         <div class="block def"><div class="bh">Definition · Method selection</div>A function \(f\) is a set of methods \(\{m_1,\dots,m_k\}\). A call \(f(x_1,\dots,x_n)\) selects the <em>most specific</em> method whose signature types are supertypes of \(\big(\texttt{typeof}(x_1),\dots,\texttt{typeof}(x_n)\big)\).</p></div>
         <div class="block note"><div class="bh">Why it matters for ML</div>When you later call <code class="inl">fit!(machine, X, y)</code>, dispatch resolves — at compile time — to a method specialized for your exact model and data. No runtime lookup, no boxing. You write generic code; the compiler emits specialized code.</div>
+        <div class="block ex"><div class="bh">Worked Example · watch dispatch pick <code class="inl">collide(a, b)</code></div>The <code class="inl">area</code> example dispatches on <em>one</em> argument. The real power shows when a call depends on the types of <strong>two</strong>. Type these four methods, then run the last two lines and watch which one Julia selects:
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="k">struct</span> <span class="t">Ship</span> <span class="k">end</span>            <span class="c"># empty structs — we care only about the TYPE</span>
+<span class="k">struct</span> <span class="t">Asteroid</span> <span class="k">end</span>
+
+<span class="f">collide</span>(a::<span class="t">Ship</span>,     b::<span class="t">Ship</span>)     = <span class="s">"two ships scrape hulls"</span>
+<span class="f">collide</span>(a::<span class="t">Ship</span>,     b::<span class="t">Asteroid</span>) = <span class="s">"ship takes hull damage"</span>
+<span class="f">collide</span>(a::<span class="t">Asteroid</span>, b::<span class="t">Ship</span>)     = <span class="s">"asteroid caves the ship in"</span>
+<span class="f">collide</span>(a::<span class="t">Asteroid</span>, b::<span class="t">Asteroid</span>) = <span class="s">"rocks bounce, both crack"</span>
+
+<span class="f">collide</span>(<span class="t">Ship</span>(), <span class="t">Asteroid</span>())   <span class="c"># "ship takes hull damage"</span>
+<span class="f">collide</span>(<span class="t">Asteroid</span>(), <span class="t">Ship</span>())   <span class="c"># "asteroid caves the ship in" — ORDER matters</span></code></pre>
+        Julia matched on the types of <em>both</em> arguments at once: <code class="inl">(Ship, Asteroid)</code> and <code class="inl">(Asteroid, Ship)</code> are different signatures and select different methods. No argument is privileged.
+        <div class="block note" style="margin-top:12px"><div class="bh">Why single dispatch can only "fake" this</div>In a receiver-only language you write <code class="inl">ship.collide(other)</code>, and the call resolves on <strong>one</strong> type — <code class="inl">ship</code>'s. The method body never learns <code class="inl">other</code>'s type from dispatch; it has to recover the second type by hand with an <code class="inl">isa</code> ladder:
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · the single-dispatch workaround</span></div><code><span class="k">function</span> <span class="f">collide_recv</span>(self::<span class="t">Ship</span>, other)   <span class="c"># resolves on `self` ONLY</span>
+    <span class="k">if</span> other <span class="k">isa</span> <span class="t">Asteroid</span>
+        <span class="s">"ship takes hull damage"</span>
+    <span class="k">elseif</span> other <span class="k">isa</span> <span class="t">Ship</span>
+        <span class="s">"two ships scrape hulls"</span>
+    <span class="k">else</span>
+        <span class="f">error</span>(<span class="s">"unknown collider"</span>)
+    <span class="k">end</span>
+<span class="k">end</span></code></pre>
+        That hand-written branch <em>is</em> the fake: a two-type operation needs <strong>both</strong> runtime types, so single dispatch resolves the receiver and then simulates the rest with an <code class="inl">isa</code> ladder (or the heavier double-dispatch / visitor pattern). It also doesn't scale — add a third collider type and you must reopen and edit every receiver's ladder. With multiple dispatch you just add one more <code class="inl">collide</code> method and the resolver does the rest.</div></div>
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>Add a <code class="inl">Triangle</code> with a base and height. How many of the existing <code class="inl">area</code> methods must you change?</li>
           <li>Why can single-dispatch OOP only "fake" a two-type operation like <code class="inl">collide(a, b)</code>?</li>
