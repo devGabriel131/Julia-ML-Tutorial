@@ -215,7 +215,47 @@ collect(1:5) # I can also use the collect function
 md"---"
 
 # ╔═╡ bba77337-9c1e-418a-9232-2de16cc682d2
+md" # Question 1.8
+```
+1. Why does seeding s = 0 make a float reducer unstable, and what is the one-token fix?
 
+It uses the ::Union type the moment a function has more than one type like an int which 0 is and a float appear through the natural calculations. A simple fix is to use the zero of the provided element type with zero(eltype(var)) if var is a float it will return 0.0
+```
+
+```
+2. What two things does @code_warntype highlight that signal instability?
+
+The presence of ::Union and ::Any in the process which are markers of type instability.
+```
+"
+
+# ╔═╡ b8b1b234-57f0-4e01-8df7-ee1b6cc77577
+sumsq(x) = sum(x.^2) # Note without broadcasting (.^) this does not work, just for demo 
+
+# ╔═╡ 92ef2aa1-cd92-4eaf-a12b-91fd4f207244
+@code_warntype sumsq(rand(100)) # Union appears. 
+
+# ╔═╡ 45feba21-c7db-4ceb-857e-66fcd11c548b
+@time sumsq(rand(10^6)) 
+
+# ╔═╡ 7c576c20-22c9-4d76-b6ea-1a02fd65524b
+md" # Question 1.9
+```
+1. What is the difference between Project.toml and Manifest.toml?
+
+the project.toml has all the package we are using and the manifest has the exact version of each package
+```
+
+```
+2. Why commit both files rather than just one?
+
+To get the complete picture of the project and be able to reproduce the results in any machine. Basically its the instruction manual.
+```
+
+"
+
+# ╔═╡ f0acd8ac-a840-436d-9459-3faa587484f5
+md" Added to the project DataFrames CSV MLJ EvoTrees"
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -263,6 +303,11 @@ project_hash = "71853c6197a6a7f222db0f1978c7cb232b87c5ee"
 # ╠═b82b6f17-2cce-41e4-bfa7-000e1777b1a4
 # ╠═3e0a263f-729d-4801-80fc-16da03970e46
 # ╟─b61a6500-d43b-4447-93bb-45c26f0f8c56
-# ╠═bba77337-9c1e-418a-9232-2de16cc682d2
+# ╟─bba77337-9c1e-418a-9232-2de16cc682d2
+# ╠═b8b1b234-57f0-4e01-8df7-ee1b6cc77577
+# ╠═92ef2aa1-cd92-4eaf-a12b-91fd4f207244
+# ╠═45feba21-c7db-4ceb-857e-66fcd11c548b
+# ╟─7c576c20-22c9-4d76-b6ea-1a02fd65524b
+# ╟─f0acd8ac-a840-436d-9459-3faa587484f5
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

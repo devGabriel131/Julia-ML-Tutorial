@@ -323,6 +323,19 @@ v = [<span class="n">3</span>, <span class="n">1</span>, <span class="n">2</span
 <span class="f">sort!</span>(v)   <span class="c"># sorts IN PLACE — the ! means it mutates</span></code></pre>
         <div class="block def"><div class="bh">Definition · The bang</div>A trailing <code class="inl">!</code> is a naming discipline meaning "this mutates its argument." Nothing enforces it, but it is universal: <code class="inl">push!</code>, <code class="inl">fit!</code>, <code class="inl">predict!</code> all write in place.</div>
         <p>A short-form function returns its <em>last expression</em> automatically — no <code class="inl">return</code> needed. Multiple return values are tuples you can destructure: <code class="inl">lo, hi = extrema(v)</code>.</p>
+        <div class="block ex"><div class="bh">Worked Example · the <code class="inl">-&gt;</code> operator, in two layers</div>The boss line from the M1 exam computes a one-pass standard deviation,
+          <div class="eq">\[ \sigma = \sqrt{\tfrac{1}{n}\sum_{i=1}^{n}(x_i-\mu)^2}, \]</div>
+          written as <code class="inl">σ = sqrt(sum(x -&gt; abs2(x - μ), v) / n)</code>. Two distinct ideas are stacked in that line; pull them apart.
+          <p style="margin-top:12px"><strong>Layer 1 — <code class="inl">-&gt;</code> builds an anonymous function.</strong> The fragment <code class="inl">x -&gt; abs2(x - μ)</code> is a one-argument function with no name. Its body reaches outside itself to read <code class="inl">μ</code> from the enclosing scope — that captured binding is what makes it a <em>closure</em>. The named form is the very same function with a label attached:</p>
+          <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>μ = <span class="n">4.0</span>
+<span class="f">f</span>(x) = <span class="f">abs2</span>(x - μ)        <span class="c"># named — the body is bound to the name f</span>
+g   = x <span class="k">-&gt;</span> <span class="f">abs2</span>(x - μ)    <span class="c"># anonymous — same body, no name; captures μ</span>
+<span class="f">f</span>(<span class="n">7</span>) == g(<span class="n">7</span>)              <span class="c"># true — both give (7 - 4)^2 = 9</span></code></pre>
+          <p><strong>Layer 2 — <code class="inl">sum(f, v)</code> maps, then reduces, in one pass.</strong> The two-argument form of <code class="inl">sum</code> applies <code class="inl">f</code> to each element of <code class="inl">v</code> and accumulates the results as it walks — no array of squared values is ever materialized. Compare the temporary-allocating form against the fused one:</p>
+          <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="f">sum</span>([<span class="f">abs2</span>(c - μ) <span class="k">for</span> c <span class="k">in</span> v])   <span class="c"># builds an n-element array, THEN sums it</span>
+<span class="f">sum</span>(x <span class="k">-&gt;</span> <span class="f">abs2</span>(x - μ), v)        <span class="c"># fused: one pass, zero intermediate array</span></code></pre>
+          <p>That second line is exactly why the fast normalizer beats the slow one: identical arithmetic, but the map-reduce form allocates nothing on the heap, so it never pays for an \(n\)-element temporary. (<code class="inl">abs2(z)</code> is just <code class="inl">z*z</code> with no detour through a power function — the idiom for "square it.")</p>
+        </div>
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>What does <code class="inl">sort(v)</code> do to <code class="inl">v</code>? What does <code class="inl">sort!(v)</code> do?</li>
           <li>Rewrite <code class="inl">bounds(a) = (minimum(a), maximum(a))</code> and destructure its result.</li>
