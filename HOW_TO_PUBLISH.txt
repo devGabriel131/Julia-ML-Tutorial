@@ -1,0 +1,14 @@
+The daily run on 2026-06-18 could not push to GitHub: the stored token in
+.secrets/github_token was REJECTED with HTTP 403 ("Permission denied to
+devGabriel131"). The token can read (clone) but lacks write/push scope, or has
+expired. Regenerate a PAT with repo write access and replace .secrets/github_token.
+
+The book IS updated locally (julia_ml_book.html in the course folder and in repo/).
+The pending commit (today's §2.2 SVG + the still-unpushed §1.4 and §1.2 work) is
+saved as repo/PENDING_PUBLISH.bundle.
+
+To publish once you have a working token, from a clean clone:
+  git clone https://github.com/devGabriel131/Julia-ML-Tutorial.git fresh && cd fresh
+  git bundle unbundle ../PENDING_PUBLISH.bundle   # or: git fetch ../PENDING_PUBLISH.bundle
+  # simplest: just copy the updated julia_ml_book.html + lessons/*.md in, then:
+  git add -A && git commit -m "Daily: §2.2 span SVG (+pending §1.4/§1.2)" && git push origin main

@@ -152,6 +152,17 @@
   .fig svg{max-width:100%;height:auto;color:var(--ink)}
   .figcap{font-size:13px;color:var(--soft);margin:8px 4px 4px;text-align:center;line-height:1.5}
   .figcap code{font-family:var(--mono);font-size:.92em}
+  details.ans{margin:12px 0 2px;border:1px solid var(--line);border-radius:8px;background:var(--pane)}
+  details.ans>summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;font-weight:700;
+        letter-spacing:.08em;text-transform:uppercase;color:var(--accent);padding:9px 14px;list-style:none}
+  details.ans>summary::-webkit-details-marker{display:none}
+  details.ans>summary::before{content:"\25B8\00a0";color:var(--soft)}
+  details.ans[open]>summary::before{content:"\25BE\00a0"}
+  details.ans .body{padding:4px 16px 12px;font-size:14.5px;border-top:1px solid var(--line)}
+  details.ans .body ol{margin:.5em 0;padding-left:1.3em}
+  details.ans .body li{margin:.5em 0}
+  details.ans .body li::marker{font-family:var(--mono);color:var(--soft)}
+  details.ans .body code{font-family:var(--mono);font-size:.88em}
   table.tt{border-collapse:collapse;width:100%;margin:16px 0;font-size:15px;font-family:var(--sans)}
   table.tt th,table.tt td{border:1px solid var(--line);padding:8px 12px;text-align:left}
   table.tt th{background:var(--pane);font-family:var(--mono);font-size:12px;text-transform:uppercase;
@@ -249,7 +260,11 @@
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>Which key enters package mode, and what command makes the current folder its own environment?</li>
           <li>Write a string that interpolates the expression \(3^2+1\) inline.</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li><code>]</code> enters package mode (the <code>pkg&gt;</code> prompt); <code>activate .</code> makes the current folder its own environment.</li>
+          <li><code>"$(3^2 + 1)"</code> — the <code>$(...)</code> form evaluates the whole expression inside the string, giving <code>"10"</code>.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.2 TYPES ============ -->
@@ -262,10 +277,28 @@
 <span class="t">Float64</span> <span class="k">&lt;:</span> <span class="t">Real</span>          <span class="c"># true</span>
 <span class="f">eltype</span>([<span class="n">1.0</span>, <span class="n">2.0</span>])       <span class="c"># Float64 — the array's element type</span></code></pre>
         <div class="block def"><div class="bh">Definition · Type stability (preview)</div>The type lattice is real machinery: the compiler specializes code per concrete type. Types are how you get C-like speed <em>and</em> how you select behavior. We make this precise in Section 1.8.</div>
+        <div class="block ex"><div class="bh">Worked Example · why <code class="inl">[1, 2.0]</code> is <code class="inl">Float64</code> — promotion, not "importance"</div>An array literal has to settle on <em>one</em> element type for the whole collection. Julia computes it with <code class="inl">promote_type</code>: the smallest type every element converts into without losing information. That is a fixed rule on the type lattice — not a judgement about which value "matters most." Run it and watch the rule, not a ranking:
+          <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="f">promote_type</span>(<span class="t">Int64</span>, <span class="t">Float64</span>)   <span class="c"># Float64 — the common type Int and Float share</span>
+[<span class="n">1</span>, <span class="n">2.0</span>]                       <span class="c"># 2-element Vector{Float64}: [1.0, 2.0]</span>
+<span class="f">eltype</span>([<span class="n">1</span>, <span class="n">2.0</span>])              <span class="c"># Float64</span>
+[<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>]                     <span class="c"># Vector{Int64} — no float present, nothing to promote</span>
+<span class="f">eltype</span>([<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>])            <span class="c"># Int64</span></code></pre>
+          <p>The <code class="inl">1</code> was converted up to <code class="inl">1.0</code> — not because it was "less consequential," but because it <em>fits inside</em> <code class="inl">Float64</code>, so the whole array lands at the shared type. The rule folds left-to-right across however many kinds you mix; with an integer, a float, and a rational it still collapses to the one type that holds them all:</p>
+          <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="f">typeof</span>([<span class="n">1</span>, <span class="n">2.0</span>, <span class="n">3</span><span class="k">//</span><span class="n">1</span>])         <span class="c"># Vector{Float64} — Int, Float64, Rational all fit Float64</span></code></pre>
+          <p>So <code class="inl">eltype</code> isn't picking a winner — it is <code class="inl">promote_type</code> applied across the elements. If you can predict the promotion, you can predict the element type before you ever build the array.</p>
+        </div>
+        <div class="contrast">
+          <div class="card py"><div class="tag">The trap</div><p><code>eltype</code> returns "the most consequential type," and <code>[1 2.0]</code> is the array you meant. Wrong twice. There is no notion of <em>importance</em> — <code>eltype</code> is <code>promote_type</code> folded over the elements, a lattice rule. And <code>[1 2.0]</code> uses <strong>spaces</strong>, which build a <code>1×2 Matrix{Float64}</code>, not a vector — so you'd be reading the element type of a matrix you didn't intend.</p></div>
+          <div class="card jl"><div class="tag">The idiom</div><p><strong>Commas</strong> make a <code>Vector</code>: <code>[1, 2.0]</code> is a <code>Vector{Float64}</code>. Its element type is the common type from <code>promote_type(Int64, Float64) == Float64</code>. Reach for <code>eltype(x)</code> to read an array's element type and <code>promote_type(T, U)</code> to predict it — both are mechanical, neither asks which value is "most important."</p></div>
+        </div>
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>Is <code class="inl">Int64 &lt;: AbstractFloat</code>? Why or why not?</li>
           <li>What does <code class="inl">eltype([1, 2, 3])</code> return, and what would <code class="inl">eltype([1, 2.0])</code> return?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>No. <code>Int64</code> descends <code>Signed → Integer → Real</code> — a different branch from <code>AbstractFloat</code>. They share the ancestor <code>Real</code>, but neither is a subtype of the other.</li>
+          <li><code>eltype([1, 2, 3])</code> is <code>Int64</code>; <code>eltype([1, 2.0])</code> is <code>Float64</code> — the mixed literal is <strong>promoted</strong> to a common concrete element type (not <code>Any</code>, and not "the most important" type).</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.3 DISPATCH ============ -->
@@ -280,7 +313,7 @@
 <span class="f">area</span>(r::<span class="t">Rect</span>)   = r.w * r.h
 
 <span class="f">area</span>(<span class="t">Circle</span>(<span class="n">2.0</span>))             <span class="c"># 12.566…</span></code></pre>
-        <div class="block def"><div class="bh">Definition · Method selection</div>A function \(f\) is a set of methods \(\{m_1,\dots,m_k\}\). A call \(f(x_1,\dots,x_n)\) selects the <em>most specific</em> method whose signature types are supertypes of \(\big(\texttt{typeof}(x_1),\dots,\texttt{typeof}(x_n)\big)\).</p></div>
+        <div class="block def"><div class="bh">Definition · Method selection</div>A function \(f\) is a set of methods \(\{m_1,\dots,m_k\}\). A call \(f(x_1,\dots,x_n)\) selects the <em>most specific</em> method whose signature types are supertypes of \(\big(\texttt{typeof}(x_1),\dots,\texttt{typeof}(x_n)\big)\).</div>
         <div class="block note"><div class="bh">Why it matters for ML</div>When you later call <code class="inl">fit!(machine, X, y)</code>, dispatch resolves — at compile time — to a method specialized for your exact model and data. No runtime lookup, no boxing. You write generic code; the compiler emits specialized code.</div>
         <div class="block ex"><div class="bh">Worked Example · watch dispatch pick <code class="inl">collide(a, b)</code></div>The <code class="inl">area</code> example dispatches on <em>one</em> argument. The real power shows when a call depends on the types of <strong>two</strong>. Type these four methods, then run the last two lines and watch which one Julia selects:
         <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code><span class="k">struct</span> <span class="t">Ship</span> <span class="k">end</span>            <span class="c"># empty structs — we care only about the TYPE</span>
@@ -308,7 +341,11 @@
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>Add a <code class="inl">Triangle</code> with a base and height. How many of the existing <code class="inl">area</code> methods must you change?</li>
           <li>Why can single-dispatch OOP only "fake" a two-type operation like <code class="inl">collide(a, b)</code>?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>Zero. You add one new method <code>area(t::Triangle)</code>; multiple dispatch leaves every existing <code>area</code> method untouched.</li>
+          <li>A single-dispatch call resolves on <em>one</em> type — the receiver. A two-type operation needs <em>both</em> runtime types, so the body has to recover the second by hand (an <code>isa</code> ladder, or the heavier double-dispatch / visitor pattern) — and it doesn't scale as collider types grow.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.4 FUNCTIONS ============ -->
@@ -323,6 +360,23 @@ v = [<span class="n">3</span>, <span class="n">1</span>, <span class="n">2</span
 <span class="f">sort!</span>(v)   <span class="c"># sorts IN PLACE — the ! means it mutates</span></code></pre>
         <div class="block def"><div class="bh">Definition · The bang</div>A trailing <code class="inl">!</code> is a naming discipline meaning "this mutates its argument." Nothing enforces it, but it is universal: <code class="inl">push!</code>, <code class="inl">fit!</code>, <code class="inl">predict!</code> all write in place.</div>
         <p>A short-form function returns its <em>last expression</em> automatically — no <code class="inl">return</code> needed. Multiple return values are tuples you can destructure: <code class="inl">lo, hi = extrema(v)</code>.</p>
+        <div class="block note"><div class="bh">Destructuring is <em>not</em> destructive</div>The names rhyme; the meanings are opposites. <strong>Destructuring</strong> — <code class="inl">lo, hi = bounds(v)</code> — only <em>binds names</em>: it reads the returned tuple positionally and points <code class="inl">lo</code> at the first slot, <code class="inl">hi</code> at the second. Nothing is written to. The tuple itself is immutable, and <code class="inl">v</code> is never touched. That is the exact reverse of a trailing <code class="inl">!</code>, which exists precisely to <em>mutate</em>. So a function that returns a pair and a function that edits its argument in place are unrelated ideas that happen to share three letters.</div>
+        <div class="contrast">
+          <div class="card py"><div class="tag">The trap</div><p><code>bounds(a) = (minimum!(a), maximum!(a))</code> — wrong. <code>minimum!</code>/<code>maximum!</code> are <em>not</em> "the min/max with a bang." <code>minimum!(r, A)</code> reduces <code>A</code> <em>into</em> a preallocated array <code>r</code> and returns <code>r</code>; it mutates its first argument. There is no version that means "give me the smallest element." Reaching for a <code>!</code> here is the rhyme misfiring.</p></div>
+          <div class="card jl"><div class="tag">The idiom</div><p><code>bounds(a) = (minimum(a), maximum(a))</code>, then <code>lo, hi = bounds(v)</code>. Plain <code>minimum</code>/<code>maximum</code> each read the collection and <em>return</em> a value, leaving <code>a</code> intact; the destructuring then names the two results. (One scan beats two: <code>lo, hi = extrema(v)</code> finds both in a single pass.)</p></div>
+        </div>
+        <div class="block ex"><div class="bh">Worked Example · prove it — binding vs. mutating</div>Don't take the card on faith; run both panes and read the state that comes back. First, destructuring leaves its source untouched. <code class="inl">bounds</code> only <em>reads</em> <code class="inl">v</code> and hands back a pair; the names then pull that pair apart by position:
+          <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>v = [<span class="n">3</span>, <span class="n">1</span>, <span class="n">2</span>]
+<span class="f">bounds</span>(a) = (<span class="f">minimum</span>(a), <span class="f">maximum</span>(a))   <span class="c"># returns a 2-tuple; reads a, writes nothing</span>
+lo, hi = <span class="f">bounds</span>(v)        <span class="c"># lo = 1, hi = 3 — names bound by position</span>
+v                         <span class="c"># still [3, 1, 2] — v was never modified</span></code></pre>
+          <p>Now the genuine bang, so the trap is concrete rather than a warning. <code class="inl">minimum!</code> is a <em>reduction into a preallocated target</em>: the <strong>shape of the destination</strong> decides which dimension to collapse, and the call overwrites that destination — which is the entire reason it carries a <code class="inl">!</code>.</p>
+          <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>A = [<span class="n">3</span> <span class="n">1</span>; <span class="n">2</span> <span class="n">5</span>]            <span class="c"># 2×2 matrix</span>
+r = <span class="f">zeros</span>(Int, <span class="n">2</span>, <span class="n">1</span>)      <span class="c"># destination: one slot per ROW</span>
+<span class="f">minimum!</span>(r, A)            <span class="c"># collapse each row → r becomes [1; 2], and is RETURNED</span>
+r                         <span class="c"># [1; 2] — r was mutated; A is untouched</span></code></pre>
+          <p>So <code class="inl">minimum</code> answers "what is the smallest element?" and <em>returns</em> it; <code class="inl">minimum!</code> answers "fill this array with per-slice minima" and <em>mutates</em> it. Two different jobs — the bang was never an alternate spelling of the same function. That is why <code class="inl">bounds</code> wants the plain forms, and why the result is safe to destructure.</p>
+        </div>
         <div class="block ex"><div class="bh">Worked Example · the <code class="inl">-&gt;</code> operator, in two layers</div>The boss line from the M1 exam computes a one-pass standard deviation,
           <div class="eq">\[ \sigma = \sqrt{\tfrac{1}{n}\sum_{i=1}^{n}(x_i-\mu)^2}, \]</div>
           written as <code class="inl">σ = sqrt(sum(x -&gt; abs2(x - μ), v) / n)</code>. Two distinct ideas are stacked in that line; pull them apart.
@@ -339,7 +393,11 @@ g   = x <span class="k">-&gt;</span> <span class="f">abs2</span>(x - μ)    <spa
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>What does <code class="inl">sort(v)</code> do to <code class="inl">v</code>? What does <code class="inl">sort!(v)</code> do?</li>
           <li>Rewrite <code class="inl">bounds(a) = (minimum(a), maximum(a))</code> and destructure its result.</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li><code>sort(v)</code> returns a sorted <em>copy</em>; <code>v</code> is unchanged. <code>sort!(v)</code> sorts <code>v</code> in place (mutates it).</li>
+          <li><code>bounds(a) = (minimum(a), maximum(a))</code>, then <code>lo, hi = bounds(v)</code>. Destructuring only binds names — it does not mutate, and there is no <code>minimum!</code>/<code>maximum!</code> that means "the min/max."</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.5 ARRAYS ============ -->
@@ -415,7 +473,11 @@ A[:, <span class="n">1</span>]              <span class="c"># [1, 4] — first c
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>For a hot double loop over a matrix, which index belongs in the inner loop in Julia, and why?</li>
           <li>What does <code class="inl">[i^2 for i in 1:5]</code> evaluate to?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>The <em>row</em> index <code>i</code> belongs inner. Julia is column-major, so the inner loop should march down a column (contiguous memory): columns outer, rows inner.</li>
+          <li><code>[1, 4, 9, 16, 25]</code>.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.6 BROADCASTING ============ -->
@@ -435,7 +497,11 @@ y = <span class="f">similar</span>(x)
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>What does the <code class="inl">@.</code> macro do to every operator in an expression?</li>
           <li>Why is the fused version faster than computing it as two separate steps?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>It rewrites every operator and function call in the expression into its broadcasting (elementwise, dotted) form.</li>
+          <li>The whole chain compiles into a single loop with no intermediate arrays — one pass, zero extra allocations — instead of allocating a temporary (and making a pass) per operation.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.7 VIEWS ============ -->
@@ -453,7 +519,11 @@ u[<span class="n">1</span>] = <span class="n">99</span>; v          <span class=
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>After <code class="inl">w = v[2:4]; w[1] = 0</code>, is <code class="inl">v</code> changed? What about with <code class="inl">@view</code>?</li>
           <li>When is <code class="inl">@view</code> the right call rather than a copy?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>With the plain slice, <code>v</code> is <strong>unchanged</strong> (the slice copied). With <code>u = @view v[2:4]</code>, the view aliases <code>v</code>'s memory, so <code>v</code> <strong>is</strong> changed.</li>
+          <li>In hot loops where you slice a large array and only read/update that section in place — <code>@view</code> avoids the allocation. Default to copies for clarity otherwise.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.8 TYPE STABILITY ============ -->
@@ -472,7 +542,11 @@ u[<span class="n">1</span>] = <span class="n">99</span>; v          <span class=
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>Why does seeding <code class="inl">s = 0</code> make a float reducer unstable, and what is the one-token fix?</li>
           <li>What two things does <code class="inl">@code_warntype</code> highlight that signal instability?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li><code>0</code> is an <code>Int</code>; the first <code>+=</code> with float data forces <code>s</code> to <code>Float64</code>, so it never settles on one concrete type and the compiler carries a <code>::Union</code>. One-token fix: seed with <code>zero(eltype(v))</code> (or the promoted type).</li>
+          <li><code>::Union{...}</code> and <code>::Any</code> — non-concrete inferred types, shown highlighted.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.9 PROJECT ============ -->
@@ -488,7 +562,11 @@ u[<span class="n">1</span>] = <span class="n">99</span>; v          <span class=
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>What is the difference between <code class="inl">Project.toml</code> and <code class="inl">Manifest.toml</code>?</li>
           <li>Why commit both files rather than just one?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li><code>Project.toml</code> lists your direct dependencies (and compat bounds); <code>Manifest.toml</code> pins the exact resolved version of every package in the full dependency tree.</li>
+          <li>Together they rebuild the environment identically on any machine — <code>Project</code> says what you want, <code>Manifest</code> is the lockfile of what was resolved. One without the other loses reproducibility.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 1.10 PRACTICE ============ -->
@@ -534,6 +612,7 @@ u[<span class="n">1</span>] = <span class="n">99</span>; v          <span class=
         <p>Everything here is the substrate for the rest of the program. A linear model is a dot product (M7). A feature matrix times a weight vector is a stack of dot products (§2.7). Least squares is a projection measured by a norm (M5). Ridge and Lasso are norm penalties (M7). Get vectors and norms solid now and the modeling later is mostly bookkeeping.</p>
         <div class="block def"><div class="bh">Competency · Module 2</div>Compute and reason about vectors, dot products, norms, and matrix products by hand <em>and</em> in idiomatic Julia; implement <code class="inl">mydot</code>/<code class="inl">mynorm</code> from scratch with type-stable accumulators; and read \(\hat y = X\beta\) as "one dot product per row."</div>
         <p>The payoff line of the whole module: a linear prediction over a dataset is the single expression \(\hat y = X\beta\). Sections: vectors and the two operations, linear combinations &amp; span, the dot product, norms, matrices, transpose &amp; identity, the matrix products, the <code class="inl">LinearAlgebra</code> stdlib with column-major performance, and practice.</p>
+        <div class="block note"><div class="bh">The spine of this module — and a note on your textbooks</div>One idea recurs in two guises: every product \(Ax\) can be read <em>by row</em> (a dot product per row — the prediction reading) or <em>by column</em> (a weighted sum of \(A\)'s columns — the span/solvability reading). Holding both at once is the skill M2 trains. If you're also working through Strang's MIT 18.06 or Lay's <em>Linear Algebra and Its Applications</em>, this book keeps their vocabulary aligned — span ↔ column space \(C(A)\), the vector equation ↔ \(Ax=b\), linear (in)dependence ↔ rank — and glosses both names whenever they diverge, so the three sources reinforce instead of compete. Per the course's one rule, everything is taught right here; neither text is required reading.</div>
       </section>
 
       <!-- ============ 2.1 VECTORS ============ -->
@@ -567,7 +646,11 @@ a + b        <span class="c"># [4.0, 2.0] — vector addition is built in</span>
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>What shape is <code class="inl">[1, 2, 3]</code>, and what shape is <code class="inl">[1 2 3]</code>? Why will the difference matter later?</li>
           <li>Compute \(2a - b\) for \(a=[1,2]\), \(b=[3,0]\) by hand, then in Julia. Which operators did you use, and why no dots?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li><code>[1, 2, 3]</code> is \(3\times1\) (a column <code>Vector</code>); <code>[1 2 3]</code> is \(1\times3\) (a row, a <code>Matrix</code>). The shapes behave differently the instant you multiply (§2.7), so the difference is not cosmetic.</li>
+          <li>\(2a-b = 2[1,2]-[3,0] = [-1,4]\). In Julia: <code>2a - b</code> — no dots, because vector <code>+</code>/<code>-</code> and scalar <code>*</code> are true linear-algebra operations; the dot is only for elementwise work.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 2.2 SPAN ============ -->
@@ -582,18 +665,83 @@ e2 = [<span class="n">0.0</span>, <span class="n">1.0</span>]
 <span class="n">3</span>*e1 + <span class="n">4</span>*e2     <span class="c"># [3.0, 4.0] — every 2-vector is a combo of e1, e2</span>
 <span class="c"># span(e1, e2) is ALL of R²: any [x, y] = x*e1 + y*e2</span>
 <span class="c"># span([1.0, 1.0]) alone is only the diagonal LINE y = x</span></code></pre>
-        <div class="block note"><div class="bh">Why a competitor cares</div>A linear model's prediction is a linear combination of the <em>feature columns</em>, weighted by the coefficients \(\beta\). "What can my linear model possibly predict?" is literally "what's in the span of my feature columns?" When two features are redundant — one a scaled copy of another — they add <em>nothing</em> to the span. That's <strong>multicollinearity</strong>, the villain of M5. You're meeting it here in its honest geometric form, before it has a scary name.</div>
+        <div class="block def"><div class="bh">Definition · Linear independence &amp; dependence</div>A set \(v^{(1)},\dots,v^{(k)}\) is <strong>linearly dependent</strong> when one of them is already a linear combination of the others — equivalently, when some weights that are <em>not all zero</em> produce \[ c_1 v^{(1)} + \cdots + c_k v^{(k)} = 0. \] If the <em>only</em> solution is \(c_1=\cdots=c_k=0\), the set is <strong>linearly independent</strong>: every vector contributes a genuinely new direction, none is redundant. Dependence is exactly the moment a vector adds nothing to the span. You'll quantify this as the <strong>rank</strong> of a matrix in M5; for now hold the qualitative picture.</div>
+        <div class="fig">
+          <svg viewBox="0 0 680 250" role="img" aria-label="Three pictures of span in the plane: one vector spans a line; two independent vectors span the whole plane; two dependent vectors (v and 2v) span only a line." xmlns="http://www.w3.org/2000/svg" font-family="var(--mono)">
+            <defs>
+              <marker id="sg" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--julia2)"/></marker>
+              <marker id="sp" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--julia3)"/></marker>
+            </defs>
+
+            <!-- ===== Panel 1: span{v} = a line ===== -->
+            <text x="110" y="30" font-size="12" font-weight="700" fill="var(--ink)" text-anchor="middle">span{v} — a line</text>
+            <!-- axes -->
+            <line x1="18" y1="150" x2="222" y2="150" stroke="var(--line)" stroke-width="1.2"/>
+            <line x1="110" y1="208" x2="110" y2="56" stroke="var(--line)" stroke-width="1.2"/>
+            <!-- the span: full line through O along v, dashed -->
+            <line x1="22" y1="208" x2="222" y2="86" stroke="var(--soft)" stroke-width="1.3" stroke-dasharray="5 4"/>
+            <!-- v -->
+            <line x1="110" y1="150" x2="154" y2="124" stroke="var(--julia2)" stroke-width="2.6" marker-end="url(#sg)"/>
+            <text x="160" y="118" font-size="13" font-weight="700" fill="var(--julia2)">v</text>
+            <text x="206" y="100" font-size="10.5" fill="var(--soft)">span</text>
+            <circle cx="110" cy="150" r="2.6" fill="var(--soft)"/>
+
+            <!-- ===== Panel 2: span{u,w} = the plane ===== -->
+            <text x="340" y="30" font-size="12" font-weight="700" fill="var(--ink)" text-anchor="middle">span{u, w} — the whole plane</text>
+            <rect x="250" y="58" width="180" height="144" fill="var(--accent)" opacity="0.10"/>
+            <!-- axes -->
+            <line x1="248" y1="150" x2="452" y2="150" stroke="var(--line)" stroke-width="1.2"/>
+            <line x1="340" y1="208" x2="340" y2="56" stroke="var(--line)" stroke-width="1.2"/>
+            <!-- u and w: two independent directions -->
+            <line x1="340" y1="150" x2="390" y2="141" stroke="var(--julia2)" stroke-width="2.6" marker-end="url(#sg)"/>
+            <line x1="340" y1="150" x2="349" y2="106" stroke="var(--julia3)" stroke-width="2.6" marker-end="url(#sp)"/>
+            <text x="396" y="138" font-size="13" font-weight="700" fill="var(--julia2)">u</text>
+            <text x="352" y="100" font-size="13" font-weight="700" fill="var(--julia3)">w</text>
+            <text x="424" y="74" font-size="10.5" fill="var(--accent)" text-anchor="end">every point</text>
+            <circle cx="340" cy="150" r="2.6" fill="var(--soft)"/>
+
+            <!-- ===== Panel 3: span{v, 2v} = still a line ===== -->
+            <text x="570" y="30" font-size="12" font-weight="700" fill="var(--ink)" text-anchor="middle">span{v, 2v} — still a line</text>
+            <!-- axes -->
+            <line x1="478" y1="150" x2="666" y2="150" stroke="var(--line)" stroke-width="1.2"/>
+            <line x1="570" y1="208" x2="570" y2="56" stroke="var(--line)" stroke-width="1.2"/>
+            <!-- both vectors lie on one line -->
+            <line x1="500" y1="194" x2="651" y2="100" stroke="var(--soft)" stroke-width="1.3" stroke-dasharray="5 4"/>
+            <line x1="570" y1="150" x2="641" y2="106" stroke="var(--julia3)" stroke-width="2.6" marker-end="url(#sp)"/>
+            <line x1="570" y1="150" x2="605" y2="128" stroke="var(--julia2)" stroke-width="3.4" marker-end="url(#sg)"/>
+            <text x="600" y="124" font-size="13" font-weight="700" fill="var(--julia2)">v</text>
+            <text x="646" y="100" font-size="13" font-weight="700" fill="var(--julia3)">2v</text>
+            <circle cx="570" cy="150" r="2.6" fill="var(--soft)"/>
+          </svg>
+          <div class="figcap"><b>Span, and why independence is the thing that matters.</b> One nonzero vector \(v\) spans a <b>line</b> — all its scalar multiples \(cv\) (left). Add a vector \(w\) pointing in a <em>genuinely new</em> direction and the two together reach <b>every</b> point of \(\mathbb{R}^2\) (middle): \([x,y]=c_1 u+c_2 w\) always has a solution — the set is <b>linearly independent</b>. But pair \(v\) with \(2v\) and the second arrow lies <em>on the line you already had</em> (right): it adds no new direction, the span stays a line, and the set is <b>linearly dependent</b>. More vectors do not mean a bigger span — only independent ones enlarge it. That is exactly the redundant-feature / multicollinearity picture below.</div>
+        </div>
+        <div class="block note"><div class="bh">Why a competitor cares</div>A linear model's prediction is a linear combination of the <em>feature columns</em>, weighted by the coefficients \(\beta\). "What can my linear model possibly predict?" is literally "what's in the span of my feature columns?" When two features are redundant — one a scaled copy of another — they are <strong>linearly dependent</strong> and add <em>nothing</em> to the span. That's <strong>multicollinearity</strong>, the villain of M5. You're meeting it here in its honest geometric form, before it has a scary name.</div>
+        <div class="block note"><div class="bh">Your two textbooks, reconciled — span ↔ column space ↔ vector equation</div>You're following Strang's lectures and Lay's text alongside this book; they describe the <em>same</em> objects in different words, so pin the mapping down once and reuse it. The span of a matrix's columns is what Strang calls the <strong>column space</strong> \(C(A)\). Asking "is \(b\) a linear combination of these vectors?" is what Lay calls solving the <strong>vector equation</strong> \(x_1 a_1 + \cdots + x_n a_n = b\) — and in §2.7 that becomes the matrix equation \(Ax=b\). One question, three names.
+          <table class="tt" style="margin-top:10px">
+            <tr><th>This book — the idea</th><th>Strang (MIT 18.06)</th><th>Lay (Linear Algebra &amp; Its Applications)</th></tr>
+            <tr><td>all reachable combinations</td><td>column space \(C(A)\)</td><td>\(\mathrm{Span}\{a_1,\dots,a_n\}\)</td></tr>
+            <tr><td>"can I hit \(b\)?"</td><td>is \(b\in C(A)\)?</td><td>does the vector equation \(x_1a_1+\cdots+x_na_n=b\) have a solution?</td></tr>
+            <tr><td>no redundant vector</td><td>independent columns (full column rank)</td><td>linearly independent set</td></tr>
+            <tr><td>a redundant feature</td><td>dependent column — drops the rank</td><td>linearly dependent set</td></tr>
+          </table>
+          When a term could differ between the two, this book will gloss both — the concept is one thing wearing two names.</div>
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>Is \([5, 5]\) in the span of \([1, 1]\)? Is \([5, 4]\)? Justify both with explicit weights or a proof none exist.</li>
-          <li>If a dataset's third column equals twice its first column, what does that do to the span of the columns — and why is that bad news for a linear model?</li>
-        </ol></div>
+          <li>If a dataset's third column equals twice its first column, what does that do to the span of the columns — and why is that bad news for a linear model? Name the condition in both Strang's and Lay's vocabulary.</li>
+          <li>Are \([1,0],[0,1],[1,1]\) linearly independent? Give weights, not all zero, that combine them to \(0\) — or prove none exist.</li>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li><code>[5,5]</code>: yes, \(5\cdot[1,1]\). <code>[5,4]</code>: no — <code>span([1,1])</code> is the line \(y=x\), and no scalar \(c\) gives \([c,c]=[5,4]\) (unequal entries).</li>
+          <li>The third column adds nothing to the span (it's already in the span of column 1), so the columns are <strong>linearly dependent</strong> — Strang: dependent columns / not full column rank; Lay: a linearly dependent set. Bad news: many different \(\beta\) give identical predictions, so the coefficients aren't identified (multicollinearity).</li>
+          <li>Dependent: \(1\cdot[1,0]+1\cdot[0,1]-1\cdot[1,1]=0\) with non-zero weights — \([1,1]\) is the sum of the other two.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 2.3 DOT PRODUCT ============ -->
       <section class="page" id="m2-dot" data-crumb="2.3 · The Dot Product" data-chap="m2">
         <div class="kick">Section 2.3</div>
         <h2>The dot product — one number, three meanings</h2>
-        <div class="block def"><div class="bh">Definition · Dot product</div>For \(a, b \in \mathbb{R}^n\), \[ a \cdot b = \sum_{i=1}^{n} a_i\,b_i = a_1 b_1 + \cdots + a_n b_n. \] Multiply componentwise, then sum — two vectors in, one <em>scalar</em> out.</div>
+        <div class="block def"><div class="bh">Definition · Dot product</div>For \(a, b \in \mathbb{R}^n\), \[ a \cdot b = \sum_{i=1}^{n} a_i\,b_i = a_1 b_1 + \cdots + a_n b_n. \] Multiply componentwise, then sum — two vectors in, one <em>scalar</em> out. The same number goes by other names you'll meet in Lay (especially his orthogonality chapter) and in M5: the <strong>inner product</strong>, written \(\langle a,b\rangle\), and — once you have transpose (§2.6) — the matrix form \(a^\top b\). Dot product, inner product, \(a^\top b\): one operation, three notations.</div>
         <p>This is the most important operation in the course. Memorize all three readings — each is the right lens in a different module.</p>
         <p><strong>Reading 1 — a weighted sum (this is a prediction).</strong> If \(x\) is a feature row and \(\beta\) a weight vector, then \(\beta\cdot x\) is exactly a linear-model score: \[ \hat{y} = \beta \cdot x = \sum_{i=1}^{n} \beta_i\, x_i \quad(+\,b\ \text{for the intercept}). \]</p>
         <p><strong>Reading 2 — geometry: length and angle.</strong> The dot product encodes the angle \(\theta\) between the two arrows: \[ a \cdot b = \lVert a\rVert\, \lVert b\rVert \cos\theta. \] Burn in the consequence: \(a\cdot b = 0\) means the vectors are <strong>orthogonal</strong> (\(\theta = 90^\circ\)) — this single fact is the engine of least squares in M5. Positive dot: broadly the same direction. Negative: opposing.</p>
@@ -628,7 +776,12 @@ a = [<span class="n">1.0</span>, <span class="n">0.0</span>];  b = [<span class=
           <li>By hand: \([2,-1,0]\cdot[3,4,5]\). Then confirm with your <code class="inl">mydot</code>.</li>
           <li>Find a non-zero vector orthogonal to \([3, 4]\) and verify the dot is \(0.0\). (Hint: swap and negate.)</li>
           <li>Which of the three readings explains why \(a\cdot b\) can be zero even when neither vector is?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>\([2,-1,0]\cdot[3,4,5] = 6-4+0 = 2\).</li>
+          <li>\([4,-3]\) (swap and negate): \([3,4]\cdot[4,-3]=12-12=0\). (\([-4,3]\) works too.)</li>
+          <li>Reading 2 (geometry): \(a\cdot b=\lVert a\rVert\lVert b\rVert\cos\theta\) is zero when \(\cos\theta=0\), i.e. \(\theta=90^\circ\) — orthogonality, with both vectors non-zero.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 2.4 NORMS ============ -->
@@ -636,12 +789,13 @@ a = [<span class="n">1.0</span>, <span class="n">0.0</span>];  b = [<span class=
         <div class="kick">Section 2.4</div>
         <h2>Norms — measuring the size of a vector</h2>
         <p>A norm answers "how big is this vector?" with a single non-negative number \(\lVert v \rVert\). Two of them run the whole course.</p>
-        <div class="block def"><div class="bh">Definition · L2 and L1</div>The <strong>L2 (Euclidean) norm</strong> is Pythagoras generalized to \(n\) dimensions — the square root of the dot product of \(v\) with itself: \[ \lVert v \rVert_2 = \sqrt{\,v \cdot v\,} = \sqrt{\sum_{i=1}^{n} v_i^{2}}. \] The <strong>L1 (Manhattan) norm</strong> is the sum of absolute values — distance if you can only travel along the axes, block by block: \[ \lVert v \rVert_1 = \sum_{i=1}^{n} |v_i|. \]</div>
+        <div class="block def"><div class="bh">Definition · L2 and L1</div>The <strong>L2 (Euclidean) norm</strong> is Pythagoras generalized to \(n\) dimensions — the square root of the dot product of \(v\) with itself: \[ \lVert v \rVert_2 = \sqrt{\,v \cdot v\,} = \sqrt{\sum_{i=1}^{n} v_i^{2}}. \] The <strong>L1 (Manhattan) norm</strong> is the sum of absolute values — distance if you can only travel along the axes, block by block: \[ \lVert v \rVert_1 = \sum_{i=1}^{n} |v_i|. \] A third, the <strong>L∞ (max) norm</strong>, is just the largest entry in absolute value — the single most extreme component: \[ \lVert v \rVert_\infty = \max_i |v_i|. \] These are the cases \(p=2,1,\infty\) of the general \(p\)-norm; in §2.8 you'll call all three through one function, <code class="inl">norm(v, p)</code>.</div>
         <p>The identity \(\lVert v\rVert_2^2 = v\cdot v\) is not a coincidence to memorize; it's the definition — and it reappears every time we minimize a squared error. <code class="inl">mynorm(v) = sqrt(mydot(v, v))</code>: the dot product of §2.3 is literally the machinery of length.</p>
         <table class="tt">
           <tr><th>Norm</th><th>Formula</th><th>Unit "ball"</th><th>Shows up as</th></tr>
           <tr><td>L2 \(\lVert v\rVert_2\)</td><td>\(\sqrt{\sum v_i^2}\)</td><td>a round circle / sphere</td><td>Euclidean distance · Ridge penalty (M7)</td></tr>
           <tr><td>L1 \(\lVert v\rVert_1\)</td><td>\(\sum |v_i|\)</td><td>a diamond — corners on the axes</td><td>robust distance · Lasso penalty (M7)</td></tr>
+          <tr><td>L∞ \(\lVert v\rVert_\infty\)</td><td>\(\max_i |v_i|\)</td><td>a square — flat sides</td><td>worst-case / max-error bounds</td></tr>
         </table>
         <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · from scratch</span></div><code>v = [<span class="n">3.0</span>, <span class="n">4.0</span>]
 <span class="f">sqrt</span>(<span class="f">sum</span>(abs2, v))   <span class="c"># 5.0 — L2; abs2(x)=x², no temporary array</span>
@@ -654,7 +808,12 @@ a = [<span class="n">1.0</span>, <span class="n">0.0</span>];  b = [<span class=
           <li>Why is \(\lVert v\rVert_2^2 = v\cdot v\) true by definition rather than a theorem?</li>
           <li>For \(v=[1,-1,1,-1]\), compute \(\lVert v\rVert_1\) and \(\lVert v\rVert_2\) by hand. Which is bigger, and is that always the case?</li>
           <li>Why is <code class="inl">sum(abs2, v)</code> preferable to <code class="inl">sum(v.^2)</code>?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>Because \(v\cdot v=\sum v_i^2\), and \(\lVert v\rVert_2\) is <em>defined</em> as \(\sqrt{\sum v_i^2}\); squaring it returns \(\sum v_i^2 = v\cdot v\). It's the definition unwound, not a separate theorem.</li>
+          <li>\(v=[1,-1,1,-1]\): \(\lVert v\rVert_1 = 4\), \(\lVert v\rVert_2=\sqrt4=2\). L1 is bigger; in general \(\lVert v\rVert_1\ge\lVert v\rVert_2\), equality only when at most one entry is non-zero.</li>
+          <li><code>sum(abs2, v)</code> maps-and-reduces in one pass with no temporary; <code>sum(v.^2)</code> first allocates the array <code>v.^2</code>, then sums it — an extra allocation and pass.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 2.5 MATRICES ============ -->
@@ -683,7 +842,11 @@ A[:, <span class="n">2</span>]        <span class="c"># [2.0, 5.0] — column 2<
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>For a \(150\times 4\) feature matrix, what are \(m\) and \(n\), and what does one row represent? One column?</li>
           <li>What expression extracts column 3 of <code class="inl">A</code> without allocating?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>\(m=150\) rows, \(n=4\) columns. One row is one example (a house and its 4 features); one column is one feature across all 150 examples.</li>
+          <li><code>@view A[:, 3]</code> — the view aliases <code>A</code>'s memory, so no copy is made.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 2.6 TRANSPOSE & IDENTITY ============ -->
@@ -700,6 +863,7 @@ A'             <span class="c"># 3×2 — postfix ' is transpose (adjoint)</span
 a = [<span class="n">1.0</span>, <span class="n">2.0</span>, <span class="n">3.0</span>]
 a' * a         <span class="c"># 14.0 — (1×3)(3×1) scalar; equals dot(a, a) = ‖a‖²</span></code></pre>
         <div class="block note"><div class="bh">One subtlety — <code class="inl">'</code> is the adjoint</div>For real matrices (everything in this course) <code class="inl">A'</code> and <code class="inl">transpose(A)</code> are identical. For complex data <code class="inl">'</code> also conjugates (the "adjoint"); you don't have complex data here, so use <code class="inl">'</code> freely — just know that's why Julia has both names.</div>
+        <div class="block note"><div class="bh">Vocabulary · the row space</div>Transpose swaps the roles of rows and columns, so the columns of \(A^\top\) are exactly the rows of \(A\). The span of \(A\)'s rows is therefore the column space of \(A^\top\), written \(C(A^\top)\) — what Strang names the <strong>row space</strong>. You've now met both of his headline subspaces as the same construction ("the span of some columns") applied once to \(A\) and once to \(A^\top\); the <em>four fundamental subspaces</em> add the two null spaces in M5. Lay reaches the same place through "row space" and "rank" in his Ch. 2–4 — same objects, his sequencing.</div>
         <p>The <strong>identity</strong> \(I\) is the square matrix with \(1\)s on the diagonal, \(0\)s elsewhere — the "do nothing" operator: \(IA = A\), \(AI = A\), the matrix world's number \(1\). It anchors "inverse" (\(A^{-1}A=I\)) in M5, and it's how regularization adds \(\lambda I\) to \(X^\top X\) in M7.</p>
         <div class="eq">\[ I_3=\begin{bmatrix}1&amp;0&amp;0\\0&amp;1&amp;0\\0&amp;0&amp;1\end{bmatrix} \]</div>
         <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · LinearAlgebra</span></div><code>I              <span class="c"># the UniformScaling object — an identity of any size, lazily</span>
@@ -712,7 +876,12 @@ A + <span class="n">2.0</span>*I      <span class="c"># adds 2 to the diagonal o
           <li>What is the shape of \(X^\top X\) if \(X\) is \(m\times n\)? Why does that product appear in least squares?</li>
           <li>Why is \((AB)^\top = B^\top A^\top\) and not \(A^\top B^\top\)? Check shapes for \(A\in\mathbb{R}^{2\times3}\), \(B\in\mathbb{R}^{3\times4}\).</li>
           <li>What does <code class="inl">A + 0.1*I</code> change about <code class="inl">A</code>, exactly?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>\(X^\top X\) is \(n\times n\) (\(X^\top\) is \(n\times m\), \(X\) is \(m\times n\)). It appears because the normal equations \(X^\top X\beta=X^\top y\) come from projecting \(y\) onto the column space; the square \(X^\top X\) is what you solve.</li>
+          <li>Shapes force the reversal. \(A\) is \(2\times3\), \(B\) is \(3\times4\), so \(AB\) is \(2\times4\) and \((AB)^\top\) is \(4\times2\). \(B^\top A^\top=(4\times3)(3\times2)=4\times2\) ✓; \(A^\top B^\top=(3\times2)(4\times3)\) is undefined (inner \(2\neq4\)).</li>
+          <li>It adds \(0.1\) to each diagonal entry of \(A\) and changes nothing off the diagonal.</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 2.7 Xβ ============ -->
@@ -736,7 +905,54 @@ X = [<span class="n">1.0</span> <span class="n">3.0</span> <span class="n">2.0</
 <span class="c"># It really is a stack of dot products — prove it row by row:</span>
 [<span class="f">dot</span>(X[i, :], β) <span class="k">for</span> i <span class="k">in</span> <span class="n">1</span>:<span class="f">size</span>(X, <span class="n">1</span>)]   <span class="c"># identical to X*β</span></code></pre>
         <div class="block note"><div class="bh">The intercept trick you'll reuse all course</div>That leading column of <code class="inl">1.0</code>s is how the bias \(b\) folds into \(\beta\): the first weight multiplies a constant \(1\) in every row, adding the same offset to every prediction. "Augment \(X\) with a ones column" means you never carry a separate intercept — \(X\beta\) alone is the full affine model. M5 and M7 assume you do this.</div>
-        <p>The <strong>matrix–matrix product</strong> is the same rule applied to every column of the right matrix. For \(A\in\mathbb{R}^{m\times n}\), \(B\in\mathbb{R}^{n\times p}\): \[ c_{ij} = \sum_{k=1}^{n} a_{ik}\,b_{kj} = (\text{row } i \text{ of } A)\cdot(\text{col } j \text{ of } B), \qquad C = AB \in\mathbb{R}^{m\times p}. \] The matrix–vector product is just the special case \(p=1\).</p>
+        <div class="block def"><div class="bh">Definition · the column picture of \(Ax\)</div>The definition above is the <strong>row picture</strong>: entry \(i\) of \(Ax\) is row \(i\) dotted with \(x\). There is a second reading of the <em>identical</em> arithmetic — group it by column instead of by row — and it is the one Strang and Lay build the whole subject on. Read down the columns and \(Ax\) is a <strong>linear combination of the columns of \(A\)</strong>, with the entries of \(x\) as the weights: \[ Ax \;=\; x_1\,a_{:,1} + x_2\,a_{:,2} + \cdots + x_n\,a_{:,n}, \] where \(a_{:,j}\) is the \(j\)-th column of \(A\). Nothing changed but the bookkeeping: the row picture sums <em>along</em> each row; the column picture scales whole columns and adds them.</div>
+        <div class="fig">
+          <svg viewBox="0 0 320 285" role="img" aria-label="The column picture in two dimensions: b is the linear combination a1 plus a2 of the columns of A, shown as a parallelogram" xmlns="http://www.w3.org/2000/svg" font-family="var(--mono)">
+            <defs>
+              <marker id="cg" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--julia2)"/></marker>
+              <marker id="cp" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--julia3)"/></marker>
+              <marker id="ca" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/></marker>
+            </defs>
+            <!-- faint grid -->
+            <line x1="70" y1="250" x2="70" y2="66" stroke="var(--line)" stroke-width="1"/>
+            <line x1="116" y1="250" x2="116" y2="66" stroke="var(--line)" stroke-width="1"/>
+            <line x1="162" y1="250" x2="162" y2="66" stroke="var(--line)" stroke-width="1"/>
+            <line x1="208" y1="250" x2="208" y2="66" stroke="var(--line)" stroke-width="1"/>
+            <line x1="254" y1="250" x2="254" y2="66" stroke="var(--line)" stroke-width="1"/>
+            <line x1="70" y1="250" x2="290" y2="250" stroke="var(--line)" stroke-width="1"/>
+            <line x1="70" y1="204" x2="290" y2="204" stroke="var(--line)" stroke-width="1"/>
+            <line x1="70" y1="158" x2="290" y2="158" stroke="var(--line)" stroke-width="1"/>
+            <line x1="70" y1="112" x2="290" y2="112" stroke="var(--line)" stroke-width="1"/>
+            <!-- axes -->
+            <line x1="52" y1="250" x2="296" y2="250" stroke="var(--soft)" stroke-width="1.5"/>
+            <line x1="70" y1="266" x2="70" y2="54" stroke="var(--soft)" stroke-width="1.5"/>
+            <!-- parallelogram completion (other order): O -> a2 -> b, dashed -->
+            <line x1="70" y1="250" x2="116" y2="158" stroke="var(--soft)" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <line x1="116" y1="158" x2="254" y2="112" stroke="var(--soft)" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <!-- a1 then a2 (tip-to-tail) -->
+            <line x1="70" y1="250" x2="208" y2="204" stroke="var(--julia2)" stroke-width="2.6" marker-end="url(#cg)"/>
+            <line x1="208" y1="204" x2="254" y2="112" stroke="var(--julia3)" stroke-width="2.6" marker-end="url(#cp)"/>
+            <!-- resultant b -->
+            <line x1="70" y1="250" x2="254" y2="112" stroke="var(--accent)" stroke-width="2.6" marker-end="url(#ca)"/>
+            <circle cx="254" cy="112" r="3.5" fill="var(--accent)"/>
+            <!-- labels -->
+            <text x="132" y="241" font-size="13" font-weight="700" fill="var(--julia2)" text-anchor="middle">a₁</text>
+            <text x="246" y="166" font-size="13" font-weight="700" fill="var(--julia3)" text-anchor="middle">a₂</text>
+            <text x="150" y="170" font-size="13" font-weight="700" fill="var(--accent)" text-anchor="middle">b = a₁ + a₂</text>
+            <text x="60" y="265" font-size="11" fill="var(--soft)" text-anchor="middle">O</text>
+          </svg>
+          <div class="figcap">The <b>column picture</b> in \(\mathbb{R}^2\): for \(A=\begin{bmatrix}3&amp;1\\1&amp;2\end{bmatrix}\), the columns \(a_1=\begin{bmatrix}3\\1\end{bmatrix}\) and \(a_2=\begin{bmatrix}1\\2\end{bmatrix}\) laid tip-to-tail reach \(b=\begin{bmatrix}4\\3\end{bmatrix}\) — so \(x=\begin{bmatrix}1\\1\end{bmatrix}\) solves \(Ax=b\). General weights would scale each column first (\(x_1 a_1 + x_2 a_2\)); solving \(Ax=b\) is choosing the weights that land on \(b\), which is possible for exactly the \(b\) inside the span of the columns.</div>
+        </div>
+        <p>This is the bridge straight back to §2.2. The set of every vector \(Ax\) you can produce, as \(x\) sweeps over all of \(\mathbb{R}^n\), is exactly the span of \(A\)'s columns — Strang's <strong>column space</strong> \(C(A)\). So \(Ax=b\) has a solution <em>precisely</em> when \(b\) lies in that span. "Solve \(Ax=b\)" and "write \(b\) as a combination of \(A\)'s columns" (Lay's vector equation, §2.2) are the same sentence in two dialects. Prove the two pictures agree on one product:</p>
+        <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia · two readings, one answer</span></div><code><span class="k">using</span> <span class="t">LinearAlgebra</span>
+A = [<span class="n">2.0</span> <span class="n">0.0</span>; <span class="n">1.0</span> <span class="n">3.0</span>; <span class="n">0.0</span> <span class="n">1.0</span>]   <span class="c"># 3×2</span>
+x = [<span class="n">1.0</span>, <span class="n">2.0</span>]
+A * x                              <span class="c"># [2.0, 7.0, 2.0]</span>
+x[<span class="n">1</span>]*A[:, <span class="n">1</span>] + x[<span class="n">2</span>]*A[:, <span class="n">2</span>]          <span class="c"># [2.0, 7.0, 2.0] — COLUMN picture: weighted columns</span>
+[<span class="f">dot</span>(A[i, :], x) <span class="k">for</span> i <span class="k">in</span> <span class="n">1</span>:<span class="f">size</span>(A, <span class="n">1</span>)]   <span class="c"># [2.0, 7.0, 2.0] — ROW picture: a dot per row</span></code></pre>
+        <div class="block note"><div class="bh">Why both pictures earn their keep</div>The <strong>row picture</strong> is the ML reading: \(X\beta\) is one weighted sum per example — a column of predictions, as above. The <strong>column picture</strong> is the solvability reading: it tells you what a matrix can output <em>at all</em> — its column space — and it is the exact lens for least squares in M5, where \(y\) usually is <em>not</em> in \(C(X)\), so you project onto the closest point that is. Flipping between the two on demand is, in Strang's words, the heart of the course.</div>
+        <div class="block note"><div class="bh">Scope &amp; the solver — a forward pointer</div>This module stops at <em>reading</em> \(Ax=b\): what it means, and when a solution exists (exactly when \(b\in C(A)\)). Actually <em>finding</em> the weights \(x\) — Gaussian elimination, row reduction to <strong>echelon form</strong>, <strong>pivots</strong>, and Julia's workhorse <code class="inl">x = A \ b</code> (the backslash "left-division" operator, which picks a numerically stable method for you) — is Module 5. So when "pivot," "rank," or "echelon form" turn up in Strang or Lay before then, file them as the machinery for finding the column-picture weights; you'll build it where it earns its keep, in least squares.</div>
+        <p>The <strong>matrix–matrix product</strong> is the same rule applied to every column of the right matrix. For \(A\in\mathbb{R}^{m\times n}\), \(B\in\mathbb{R}^{n\times p}\): \[ c_{ij} = \sum_{k=1}^{n} a_{ik}\,b_{kj} = (\text{row } i \text{ of } A)\cdot(\text{col } j \text{ of } B), \qquad C = AB \in\mathbb{R}^{m\times p}. \] Read by column, the same rule says column \(j\) of \(AB\) is \(A\) times column \(j\) of \(B\) — \((AB)_{:,j} = A\,b_{:,j}\), the very "linear combination of \(A\)'s columns" move from the column picture, run once per column of \(B\). The matrix–vector product is just the special case \(p=1\).</p>
         <pre><div class="codehdr"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="label">julia</span></div><code>A = [<span class="n">1.0</span> <span class="n">2.0</span>; <span class="n">3.0</span> <span class="n">4.0</span>]
 B = [<span class="n">5.0</span> <span class="n">6.0</span>; <span class="n">7.0</span> <span class="n">8.0</span>]
 A * B     <span class="c"># [19.0 22.0; 43.0 50.0] — true matrix product</span>
@@ -750,7 +966,14 @@ A .* B    <span class="c"># [5.0 12.0; 21.0 32.0] — ELEMENTWISE, a different t
           <li>By hand: \(Ax\) for \(A=\begin{bmatrix}2&amp;0\\1&amp;3\\0&amp;1\end{bmatrix}\), \(x=\begin{bmatrix}1\\2\end{bmatrix}\). Write the result's shape <em>before</em> computing, then confirm with <code class="inl">A*x</code>.</li>
           <li>Why does \(xA\) (vector first) error here while \(Ax\) works? Answer in terms of the shape contract.</li>
           <li>If \(X\) is \(1000\times 20\) and \(\beta\) has 20 entries, how many dot products does <code class="inl">X*β</code> perform, and what shape comes back?</li>
-        </ol></div>
+          <li>Column picture: for the \(A\) and \(x\) above, write \(Ax\) as \(x_1\,a_{:,1}+x_2\,a_{:,2}\) and confirm it matches the row-picture answer. Then state, in terms of the column space \(C(A)\), the condition for \(Ax=b\) to be solvable.</li>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>Shape \((3\times2)(2\times1)=3\times1\); \(Ax=[2,7,2]\).</li>
+          <li>\(xA\) needs the inner dimensions to match: \(x\) as \(1\times2\) against \(A\) (\(3\times2\)) fails (\(2\neq3\)). \(Ax\) is \((3\times2)(2\times1)\) — inner \(2\)s match, so it works.</li>
+          <li>\(1000\) dot products (one per row), each of length \(20\); the result is a \(1000\)-vector (\(1000\times1\)).</li>
+          <li>\(Ax = 1\cdot[2,1,0] + 2\cdot[0,3,1] = [2,7,2]\) — matches the row picture. \(Ax=b\) is solvable exactly when \(b\in C(A)\) (when \(b\) is a linear combination of \(A\)'s columns).</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 2.8 STDLIB & COLUMN-MAJOR ============ -->
@@ -791,7 +1014,11 @@ a ⋅ b          <span class="c"># 32.0 — the ⋅ operator: type \cdot TAB. Re
         <div class="block rq"><div class="bh">Reading Questions</div><ol>
           <li>For \(u^\top (M v)\) with \(M\) square and huge, which grouping is cheap and which builds a big intermediate?</li>
           <li>Why does <code class="inl">dot(a, b)</code> beat <code class="inl">sum(a .* b)</code> even though both are \(O(n)\)?</li>
-        </ol></div>
+        </ol>
+        <details class="ans"><summary>Answers</summary><div class="body"><ol>
+          <li>Group as \(u^\top(Mv)\): \(Mv\) is a matrix–vector product (\(O(n^2)\)) giving a vector, then a dot (\(O(n)\)) — every intermediate stays vector-sized. Both natural associations are \(O(n^2)\); the way to blow it up is to form an outer product (e.g. \(v\,u^\top\)), an \(n\times n\) matrix, for no reason.</li>
+          <li><code>sum(a .* b)</code> allocates the temporary <code>a .* b</code> array and makes two passes; <code>dot</code> is a single fused, BLAS-backed pass with no allocation — a smaller constant factor, though both are \(O(n)\).</li>
+        </ol></div></details></div>
       </section>
 
       <!-- ============ 2.9 PRACTICE ============ -->
